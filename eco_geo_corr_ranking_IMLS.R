@@ -1,16 +1,21 @@
 
+# install.packages("PerformanceAnalytics") # Turn on to install current version
 library(PerformanceAnalytics)
 
+#Set up paths
+data_dir <- "/Volumes/GoogleDrive/Shared drives/IMLS MFA/occurrence_points/outputs"
+output_dir <- "/Volumes/GoogleDrive/Shared drives/IMLS MFA/Genetic diversity value"
+
 #Read in file
-eco_geo_results<-read.csv("ExSituCoverage_BufferTable_6_30_21.csv")
-#Pull species names 
+eco_geo_results<-read.csv(file.path(data_dir,"ExSituCoverage_BufferTable_6_30_21.csv"))
+#Pull species names
 sp_names_all<-eco_geo_results[,1]
 #Identify species with no collections
 no_collections<-sp_names_all[which(is.na(eco_geo_results[,2]))]
 sp_names_wcoll<-sp_names_all[-which(is.na(eco_geo_results[,2]))]
 #Remove species with no collections
 eco_geo_results<-eco_geo_results[-which(is.na(eco_geo_results[,2])),]
-#Maybe remove these rows? These are the non USA ones 
+#Maybe remove these rows? These are the non USA ones
 #eco_geo_results<-eco_geo_results[-which(is.na(eco_geo_results[,9])),]
 
 #Option to focus on just RL Threatened or not
@@ -52,7 +57,7 @@ eco_geo_corr(eco_geo_results_TH)
 #OVERALL: geo50, geo100, eco50, ecoUS50 have highest overall
 
 #But should probably find highest pairs and drop one of each pair... iteratively
-#This applies the function to subsets of: all, US, LC, Threatened 
+#This applies the function to subsets of: all, US, LC, Threatened
 lapply(list(eco_geo_results,eco_geo_results_usa,eco_geo_results_LC,eco_geo_results_TH),eco_geo_corr)
 
 
