@@ -13,8 +13,8 @@
 
 ### DATA IN:
 	## Global country boundaries
-	#		UIA World Countries Boundaries, UNIGIS Geospatial Education Resources, via ArcGIS Hub
-	# 		Shapefile
+	#		UIA World Countries Boundaries, UNIGIS Geospatial Education Resources, via
+	#			ArcGIS Hub Shapefile
 	#			https://hub.arcgis.com/datasets/252471276c9941729543be8789e06e12_0
 	## In situ occurrence points (latitude and longitude in decimal degrees)
 	# 	Can use the output from 3-1_refine_occurrence_points.R
