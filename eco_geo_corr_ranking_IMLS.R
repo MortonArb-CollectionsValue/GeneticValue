@@ -13,6 +13,9 @@ sp_names_all<-eco_geo_results[,1]
 #Identify species with no collections
 no_collections<-sp_names_all[which(is.na(eco_geo_results[,2]))]
 sp_names_wcoll<-sp_names_all[-which(is.na(eco_geo_results[,2]))]
+
+sp_names_TH<-sp_names_all[setdiff(which(eco_geo_results[,14]!="LC"),which(is.na(eco_geo_results[,2])))]
+
 #Remove species with no collections
 eco_geo_results<-eco_geo_results[-which(is.na(eco_geo_results[,2])),]
 #Maybe remove these rows? These are the non USA ones
@@ -97,7 +100,28 @@ cbind(species_ranked_geo50[order(species_ranked_geo50$rank),],species_ranked_geo
  match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_geo100[order(species_ranked_geo100$rank),1])-1:41
 examine_changes<-data.frame(species=as.character(species_ranked_geo50[order(species_ranked_geo50$rank),1]),
 	change_eco50=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_eco50[order(species_ranked_eco50$rank),1])-1:41),
-	chage_ecoUS50=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_ecous50[order(species_ranked_ecous50$rank),1])-1:41))
+	change_ecoUS50=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_ecous50[order(species_ranked_ecous50$rank),1])-1:41),
+	change_geo100=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_geo100[order(species_ranked_geo100$rank),1])-1:41))
+	
+#Same as above but just for Threatened (well, non LC)
+#Geo 50
+species_ranked_geo50<-data.frame(sp_names_TH,apply(eco_geo_results_TH[,2:(ncol(eco_geo_results_TH)-2)],2,rank)[,2])
+#Geo 100
+species_ranked_geo100<-data.frame(sp_names_TH,apply(eco_geo_results_TH[,2:(ncol(eco_geo_results_TH)-2)],2,rank)[,3])
+#Eco 50
+species_ranked_eco50<-data.frame(sp_names_TH,apply(eco_geo_results_TH[,2:(ncol(eco_geo_results_TH)-2)],2,rank)[,6])
+#Eco USA 50
+species_ranked_ecous50<-data.frame(sp_names_TH,apply(eco_geo_results_TH[,2:(ncol(eco_geo_results_TH)-2)],2,rank)[,9])
+colnames(species_ranked_geo50)<-c("sp","rank-geo50"); colnames(species_ranked_geo100)<-c("sp","rank-geo100")
+colnames(species_ranked_eco50)<-c("sp","rank-eco50"); colnames(species_ranked_ecous50)<-c("sp","rank-ecous50")
+cbind(species_ranked_geo50[order(species_ranked_geo50$rank),],species_ranked_geo100[order(species_ranked_geo100$rank),],
+	species_ranked_eco50[order(species_ranked_eco50$rank),],species_ranked_ecous50[order(species_ranked_ecous50$rank),])
+#Maybe 10 is just too fine scale!!
+ match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_geo100[order(species_ranked_geo100$rank),1])-1:21
+examine_changes<-data.frame(species=as.character(species_ranked_geo50[order(species_ranked_geo50$rank),1]),
+	change_eco50=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_eco50[order(species_ranked_eco50$rank),1])-1:21),
+	change_ecoUS50=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_ecous50[order(species_ranked_ecous50$rank),1])-1:21),
+	change_geo100=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_geo100[order(species_ranked_geo100$rank),1])-1:21))
 
 
 
