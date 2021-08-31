@@ -73,56 +73,85 @@ dev.off()
 #####################
 
 #So, we have 10 different measures, some of which are highly correlated, some not. How to reconcile, choose among them for tanking
+all_ranks<-apply(eco_geo_results[,2:(ncol(eco_geo_results)-2)],2,rank)
 #Could take the mean or majority decision...
+#There are two ways to get agreement across all of them 
 #One way to actually rank species is to identify those that most frequently are ranked in a given bunch, say in the top 10
-species_ranked1<-data.frame(sp_names_wcoll,rowSums(apply(eco_geo_results[,2:(ncol(eco_geo_results)-2)],2,rank)<10))
+species_ranked1<-data.frame(sp_names_wcoll,rowSums(all_ranks<10))
 #Another way to do actually rank species is to take the mean across rows in the rank order
-species_ranked2<-data.frame(sp_names_wcoll,rowMeans(apply(eco_geo_results[,2:(ncol(eco_geo_results)-2)],2,rank)))
+species_ranked2<-data.frame(sp_names_wcoll,rowMeans(all_ranks))
 #species_ranked<-data.frame(sp_names_wcoll,rank(rowMeans(apply(eco_geo_results[,2:(ncol(eco_geo_results)-2)],2,rank))))
 colnames(species_ranked1)<-c("sp","rank"); colnames(species_ranked2)<-c("sp","rank")
 #It really doesn't matter which approach :)
 cbind(species_ranked1[order(species_ranked1$rank),],species_ranked2[order(species_ranked2$rank,decreasing=T),])
 
+#But let's examine more closely the individual columns and how they differ 
 #Could look at those that might be most different and figure out why
-#Geo 50
-species_ranked_geo50<-data.frame(sp_names_wcoll,apply(eco_geo_results[,2:(ncol(eco_geo_results)-2)],2,rank)[,2])
-#Geo 100
-species_ranked_geo100<-data.frame(sp_names_wcoll,apply(eco_geo_results[,2:(ncol(eco_geo_results)-2)],2,rank)[,3])
-#Eco 50
-species_ranked_eco50<-data.frame(sp_names_wcoll,apply(eco_geo_results[,2:(ncol(eco_geo_results)-2)],2,rank)[,6])
-#Eco USA 50
-species_ranked_ecous50<-data.frame(sp_names_wcoll,apply(eco_geo_results[,2:(ncol(eco_geo_results)-2)],2,rank)[,9])
-colnames(species_ranked_geo50)<-c("sp","rank-geo50"); colnames(species_ranked_geo100)<-c("sp","rank-geo100")
-colnames(species_ranked_eco50)<-c("sp","rank-eco50"); colnames(species_ranked_ecous50)<-c("sp","rank-ecous50")
-cbind(species_ranked_geo50[order(species_ranked_geo50$rank),],species_ranked_geo100[order(species_ranked_geo100$rank),],
-	species_ranked_eco50[order(species_ranked_eco50$rank),],species_ranked_ecous50[order(species_ranked_ecous50$rank),])
-#Maybe 10 is just too fine scale!!
- match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_geo100[order(species_ranked_geo100$rank),1])-1:41
-examine_changes<-data.frame(species=as.character(species_ranked_geo50[order(species_ranked_geo50$rank),1]),
-	change_eco50=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_eco50[order(species_ranked_eco50$rank),1])-1:41),
-	change_ecoUS50=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_ecous50[order(species_ranked_ecous50$rank),1])-1:41),
-	change_geo100=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_geo100[order(species_ranked_geo100$rank),1])-1:41))
+species_ranked_geo10<-data.frame("sp"=sp_names_wcoll,"rank-geo10"=all_ranks[,1])
+species_ranked_geo50<-data.frame("sp"=sp_names_wcoll,"rank-geo50"=all_ranks[,2])
+species_ranked_geo100<-data.frame("sp"=sp_names_wcoll,"rank-geo100"=all_ranks[,3])
+species_ranked_geo500<-data.frame("sp"=sp_names_wcoll,"rank-geo500"=all_ranks[,4])
+species_ranked_eco10<-data.frame("sp"=sp_names_wcoll,"rank-eco10"=all_ranks[,5])
+species_ranked_eco50<-data.frame("sp"=sp_names_wcoll,"rank-eco50"=all_ranks[,6])
+species_ranked_eco100<-data.frame("sp"=sp_names_wcoll,"rank-eco100"=all_ranks[,7])
+species_ranked_ecous10<-data.frame("sp"=sp_names_wcoll,"rank-ecous10"=all_ranks[,8])
+species_ranked_ecous50<-data.frame("sp"=sp_names_wcoll,"rank-ecous50"=all_ranks[,9])
+species_ranked_ecous100<-data.frame("sp"=sp_names_wcoll,"rank-ecous100"=all_ranks[,10])
+#Examine them by eye
+cbind(species_ranked_geo50[order(species_ranked_geo50$rank),],
+	species_ranked_geo100[order(species_ranked_geo100$rank),],
+	species_ranked_eco50[order(species_ranked_eco50$rank),],
+	species_ranked_ecous50[order(species_ranked_ecous50$rank),])
 	
-#Same as above but just for Threatened (well, non LC)
-#Geo 50
-species_ranked_geo50<-data.frame(sp_names_TH,apply(eco_geo_results_TH[,2:(ncol(eco_geo_results_TH)-2)],2,rank)[,2])
-#Geo 100
-species_ranked_geo100<-data.frame(sp_names_TH,apply(eco_geo_results_TH[,2:(ncol(eco_geo_results_TH)-2)],2,rank)[,3])
-#Eco 50
-species_ranked_eco50<-data.frame(sp_names_TH,apply(eco_geo_results_TH[,2:(ncol(eco_geo_results_TH)-2)],2,rank)[,6])
-#Eco USA 50
-species_ranked_ecous50<-data.frame(sp_names_TH,apply(eco_geo_results_TH[,2:(ncol(eco_geo_results_TH)-2)],2,rank)[,9])
-colnames(species_ranked_geo50)<-c("sp","rank-geo50"); colnames(species_ranked_geo100)<-c("sp","rank-geo100")
-colnames(species_ranked_eco50)<-c("sp","rank-eco50"); colnames(species_ranked_ecous50)<-c("sp","rank-ecous50")
-cbind(species_ranked_geo50[order(species_ranked_geo50$rank),],species_ranked_geo100[order(species_ranked_geo100$rank),],
-	species_ranked_eco50[order(species_ranked_eco50$rank),],species_ranked_ecous50[order(species_ranked_ecous50$rank),])
-#Maybe 10 is just too fine scale!!
- match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_geo100[order(species_ranked_geo100$rank),1])-1:21
-examine_changes<-data.frame(species=as.character(species_ranked_geo50[order(species_ranked_geo50$rank),1]),
-	change_eco50=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_eco50[order(species_ranked_eco50$rank),1])-1:21),
-	change_ecoUS50=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_ecous50[order(species_ranked_ecous50$rank),1])-1:21),
-	change_geo100=(match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_geo100[order(species_ranked_geo100$rank),1])-1:21))
+#TO DO ADD IN EMILY CODE FOR LINES
 
+#How to get the difference in new rank from old rank 
+#match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_geo100[order(species_ranked_geo100$rank),1])-1:41
+count_changes<-function(list_ranks,base=1){
+	base_order<-list_ranks[[base]][order(list_ranks[[base]]$rank),1]
+	examine_changes<-data.frame(base_order)
+	for (i in 1:length(list_ranks)){
+		ranks_diff<-match(base_order,list_ranks[[i]][order(list_ranks[[i]]$rank),1])
+		examine_changes<-cbind(examine_changes,match(base_order,list_ranks[[i]][order(list_ranks[[i]]$rank),1])-1:length(base_order))
+		colnames(examine_changes)[i+1]<-names(list_ranks[[i]][2])
+	}
+	#examine_changes<-examine_changes[,-2]
+	examine_changes
+}
+#compare to geo50
+examine_changes<-count_changes(list(species_ranked_geo50,species_ranked_geo10,species_ranked_geo100,species_ranked_geo500,species_ranked_eco10,species_ranked_eco50,species_ranked_eco100,species_ranked_ecous10, species_ranked_ecous50,species_ranked_ecous100))
+colSums(abs(examine_changes[,-1])>5)
+
+#Same as above but just for Threatened (well, non LC)
+all_ranks<-apply(eco_geo_results_TH[,2:(ncol(eco_geo_results_TH)-2)],2,rank)
+species_ranked_geo10<-data.frame("sp"=sp_names_TH,"rank-geo10"=all_ranks[,1])
+species_ranked_geo50<-data.frame("sp"=sp_names_TH,"rank-geo50"=all_ranks[,2])
+species_ranked_geo100<-data.frame("sp"=sp_names_TH,"rank-geo100"=all_ranks[,3])
+species_ranked_geo500<-data.frame("sp"=sp_names_TH,"rank-geo500"=all_ranks[,4])
+species_ranked_eco10<-data.frame("sp"=sp_names_TH,"rank-eco10"=all_ranks[,5])
+species_ranked_eco50<-data.frame("sp"=sp_names_TH,"rank-eco50"=all_ranks[,6])
+species_ranked_eco100<-data.frame("sp"=sp_names_TH,"rank-eco100"=all_ranks[,7])
+species_ranked_ecous10<-data.frame("sp"=sp_names_TH,"rank-ecous10"=all_ranks[,8])
+species_ranked_ecous50<-data.frame("sp"=sp_names_TH,"rank-ecous50"=all_ranks[,9])
+species_ranked_ecous100<-data.frame("sp"=sp_names_TH,"rank-ecous100"=all_ranks[,10])
+#Examine them by eye
+cbind(species_ranked_geo50[order(species_ranked_geo50$rank),],
+	species_ranked_geo100[order(species_ranked_geo100$rank),],
+	species_ranked_eco50[order(species_ranked_eco50$rank),],
+	species_ranked_ecous50[order(species_ranked_ecous50$rank),])
+	
+#TO DO ADD IN EMILY CODE FOR LINES
+
+#Running examine_changes without specifying base will compare to the first in the list 
+examine_changes<-count_changes(list(species_ranked_geo50,species_ranked_geo10,species_ranked_geo100,species_ranked_geo500,species_ranked_eco10,species_ranked_eco50,species_ranked_eco100,species_ranked_ecous10, species_ranked_ecous50,species_ranked_ecous100))
+colSums(abs(examine_changes[,-1])>5)
+
+#Running examine_changes iteratively through comparing to base list 
+for (j in 1:10){
+	examine_changes<-count_changes(list(species_ranked_geo10,species_ranked_geo50,species_ranked_geo100,species_ranked_geo500,species_ranked_eco10,species_ranked_eco50,species_ranked_eco100,species_ranked_ecous10, species_ranked_ecous50,species_ranked_ecous100),base=j)
+	print(colnames(examine_changes)[j+1])
+	print(colSums(abs(examine_changes[,-1])>5))
+}
 
 
 eco_geo_results_usa<-eco_geo_results[-which(is.na(eco_geo_results[,10])),]
