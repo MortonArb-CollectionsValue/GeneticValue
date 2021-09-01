@@ -14,12 +14,12 @@ sp_names_all<-eco_geo_results[,1]
 no_collections<-sp_names_all[which(is.na(eco_geo_results[,2]))]
 sp_names_wcoll<-sp_names_all[-which(is.na(eco_geo_results[,2]))]
 
-sp_names_TH<-sp_names_all[setdiff(which(eco_geo_results[,14]!="LC"),which(is.na(eco_geo_results[,2])))]
+sp_names_TH<-sp_names_all[intersect(which(eco_geo_results[,14]!="LC"),which(!is.na(eco_geo_results[,2])))]
+sp_names_Q_TH<-sp_names_all[intersect(intersect(which(eco_geo_results[,14]!="LC"),which(!is.na(eco_geo_results[,2]))),which(substr(eco_geo_results[,1],1,1)=="Q"))]
+sp_names_usa<-sp_names_all[intersect(which(!is.na(eco_geo_results[,9])),which(!is.na(eco_geo_results[,2])))]
 
 #Remove species with no collections
 eco_geo_results<-eco_geo_results[-which(is.na(eco_geo_results[,2])),]
-#Maybe remove these rows? These are the non USA ones
-#eco_geo_results<-eco_geo_results[-which(is.na(eco_geo_results[,9])),]
 
 #Option to focus on just RL Threatened or not
 eco_geo_results[,ncol(eco_geo_results)]
@@ -50,8 +50,9 @@ eco_geo_corr<-function(eg_matrix){
 #USA species
 eco_geo_results_usa<-eco_geo_results[-which(is.na(eco_geo_results[,9])),]
 #within rare and not rare sets
-eco_geo_results_LC<-eco_geo_results[eco_geo_results[,ncol(eco_geo_results)]=="LC",]
-eco_geo_results_TH<-eco_geo_results[eco_geo_results[,ncol(eco_geo_results)]!="LC",]
+eco_geo_results_LC<-eco_geo_results[which(eco_geo_results[,14]=="LC"),]
+eco_geo_results_TH<-eco_geo_results[which(eco_geo_results[,14]!="LC"),]
+eco_geo_results_Q_TH<-eco_geo_results[intersect(which(eco_geo_results[,14]!="LC"),which(substr(eco_geo_results[,1],1,1)=="Q")),]
 
 #This applies the function to subsets of: 
 #				all, 			US, 				LC, 			Threatened
@@ -122,18 +123,30 @@ count_changes<-function(list_ranks,base=1){
 examine_changes<-count_changes(list(species_ranked_geo50,species_ranked_geo10,species_ranked_geo100,species_ranked_geo500,species_ranked_eco10,species_ranked_eco50,species_ranked_eco100,species_ranked_ecous10, species_ranked_ecous50,species_ranked_ecous100))
 colSums(abs(examine_changes[,-1])>5)
 
+#Generalizing further
 #Same as above but just for Threatened (well, non LC)
-all_ranks<-apply(eco_geo_results_TH[,2:(ncol(eco_geo_results_TH)-2)],2,rank)
-species_ranked_geo10<-data.frame("sp"=sp_names_TH,"rank-geo10"=all_ranks[,1])
-species_ranked_geo50<-data.frame("sp"=sp_names_TH,"rank-geo50"=all_ranks[,2])
-species_ranked_geo100<-data.frame("sp"=sp_names_TH,"rank-geo100"=all_ranks[,3])
-species_ranked_geo500<-data.frame("sp"=sp_names_TH,"rank-geo500"=all_ranks[,4])
-species_ranked_eco10<-data.frame("sp"=sp_names_TH,"rank-eco10"=all_ranks[,5])
-species_ranked_eco50<-data.frame("sp"=sp_names_TH,"rank-eco50"=all_ranks[,6])
-species_ranked_eco100<-data.frame("sp"=sp_names_TH,"rank-eco100"=all_ranks[,7])
-species_ranked_ecous10<-data.frame("sp"=sp_names_TH,"rank-ecous10"=all_ranks[,8])
-species_ranked_ecous50<-data.frame("sp"=sp_names_TH,"rank-ecous50"=all_ranks[,9])
-species_ranked_ecous100<-data.frame("sp"=sp_names_TH,"rank-ecous100"=all_ranks[,10])
+these_results<-eco_geo_results
+#these_results<-eco_geo_results_Q_TH
+#these_results<-eco_geo_results_usa
+#these_results<-eco_geo_results_TH
+
+all_ranks<-apply(these_results[,2:(ncol(these_results)-2)],2,rank)
+
+these_names<-sp_names_wcoll
+#these_names<-sp_names_Q_TH
+#these_names<-sp_names_usa
+#these_names<-sp_names_TH
+
+species_ranked_geo10<-data.frame("sp"=these_names,"rank-geo10"=all_ranks[,1])
+species_ranked_geo50<-data.frame("sp"=these_names,"rank-geo50"=all_ranks[,2])
+species_ranked_geo100<-data.frame("sp"=these_names,"rank-geo100"=all_ranks[,3])
+species_ranked_geo500<-data.frame("sp"=these_names,"rank-geo500"=all_ranks[,4])
+species_ranked_eco10<-data.frame("sp"=these_names,"rank-eco10"=all_ranks[,5])
+species_ranked_eco50<-data.frame("sp"=these_names,"rank-eco50"=all_ranks[,6])
+species_ranked_eco100<-data.frame("sp"=these_names,"rank-eco100"=all_ranks[,7])
+species_ranked_ecous10<-data.frame("sp"=these_names,"rank-ecous10"=all_ranks[,8])
+species_ranked_ecous50<-data.frame("sp"=these_names,"rank-ecous50"=all_ranks[,9])
+species_ranked_ecous100<-data.frame("sp"=these_names,"rank-ecous100"=all_ranks[,10])
 #Examine them by eye
 cbind(species_ranked_geo50[order(species_ranked_geo50$rank),],
 	species_ranked_geo100[order(species_ranked_geo100$rank),],
@@ -150,8 +163,12 @@ colSums(abs(examine_changes[,-1])>5)
 for (j in 1:10){
 	examine_changes<-count_changes(list(species_ranked_geo10,species_ranked_geo50,species_ranked_geo100,species_ranked_geo500,species_ranked_eco10,species_ranked_eco50,species_ranked_eco100,species_ranked_ecous10, species_ranked_ecous50,species_ranked_ecous100),base=j)
 	print(colnames(examine_changes)[j+1])
-	print(colSums(abs(examine_changes[,-1])>5))
+	print(mean(colSums(abs(examine_changes[,-1])>5)))
 }
+
+
+
+
 
 
 eco_geo_results_usa<-eco_geo_results[-which(is.na(eco_geo_results[,10])),]
