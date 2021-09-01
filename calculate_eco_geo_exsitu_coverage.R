@@ -44,8 +44,8 @@
 ################################################################################
 
 ## [code chunk from Shannon M. Still]
-my.packages <- c("leaflet","raster","sp","rgeos","dplyr","rgdal","Polychrome",
-	"RColorBrewer","GeoRange")
+my.packages <- c("leaflet","rgdal","raster","rgeos","GeoRange","rnaturalearth",
+	"dplyr")
 #install.packages (my.packages) # turn on to install current versions
 lapply(my.packages, require, character.only=TRUE)
 rm(my.packages)
@@ -55,17 +55,14 @@ rm(my.packages)
 ################################################################################
 
 # either set manually:
-#main_dir <- "/Volumes/GoogleDrive/My Drive/Conservation Consortia/R Training/occurrence_points"
-#script_dir <- "./Documents/GitHub/OccurrencePoints/scripts"
+main_dir <- "/Volumes/GoogleDrive/Shared drives/IMLS MFA/occurrence_points"
 
-# or use 0-1_set_workingdirectory.R script:
-source("./Documents/GitHub/OccurrencePoints/scripts/0-1_set_workingdirectory.R")
-#source("scripts/0-1_set_workingdirectory.R")
+# or use 0-1_set_workingdirectory.R script from OccurrencePoints repo:
+#source("./Documents/GitHub/OccurrencePoints/scripts/0-1_set_workingdirectory.R")
 
 ################################################################################
 # Load functions
 ################################################################################
-#source(file.path(script_dir,"0-2_load_IMLS_functions.R"))
 
 # format text in cell for output table
 format.cell <- function(ex_result,in_result,final_result){
@@ -213,13 +210,14 @@ taxon_list <- read.csv(file.path(main_dir, "inputs", "taxa_list",
   header = T, na.strings = c("","NA"),colClasses = "character")
 head(taxon_list)
 
-# read in manual edits to target species maps
+# OPTIONAL, depending on your workflow:
+#		read in manual edits to target species maps
 pt_edits <- read.csv(file.path(main_dir, "inputs", "known_distribution",
   "manual_point_edits.csv"),
   header = T, na.strings = c("","NA"),colClasses = "character")
 head(pt_edits)
 
-# select threatened (CR, EN, VU) and Near Threatened species
+# OPTIONAL: select threatened (CR, EN, VU) and Near Threatened species
 #target_sp <- taxon_list %>% filter(rl_category == "CR" | rl_category == "EN" |
 #																	 rl_category == "VU" | rl_category == "NT")
 #target_sp <- unique(target_sp$species_name_acc)
@@ -231,7 +229,7 @@ head(pt_edits)
 	# add Matt's selection
 #lc_sp <- c(lc_sp,"Ulmus bergmaniana")
 #sort(lc_sp)
-# select target species
+# OPTIONAL: select target species
 target_sp <- taxon_list %>% filter(grepl("^MAP",map_flag))
 target_sp <- sort(gsub(" ","_",target_sp$species_name_acc))
 length(target_sp)
@@ -240,7 +238,8 @@ length(target_sp)
 native_dist <- read.csv(file.path(main_dir,"inputs","known_distribution",
   "target_taxa_with_native_dist.csv"), header = T, na.strings = c("","NA"),
   colClasses = "character")
-native_dist <- native_dist %>% dplyr::select(species_name_acc,rl_native_dist,gts_native_dist)
+native_dist <- native_dist %>% dplyr::select(species_name_acc,rl_native_dist,
+	gts_native_dist)
 
 ################################################################################
 # Read in polygon data
@@ -251,22 +250,21 @@ ecoregions <- readOGR(file.path(main_dir,"inputs","gis_data",
 	"official","wwf_terr_ecos.shp"))
 
 # read in shapefile of U.S. EPA Level III ecoregions
-#ecol3 <- readOGR(file.path(main_dir, "us_eco_l3/us_eco_l3.shp"))
+#ecol3 <- readOGR(file.path(main_dir,"inputs","gis_data",
+#	"us_eco_l3/us_eco_l3.shp"))
 
 # read in shapefile of U.S. EPA Level IV ecoregions
-ecol4 <- readOGR(file.path(local_dir,
+ecol4 <- readOGR(file.path(main_dir,"inputs","gis_data",
 	"us_eco_l4_state_boundaries/us_eco_l4.shp"))
 
 # read in shapefile of country boundaries
-world_countries <- readOGR(file.path(local_dir,
+world_countries <- readOGR(file.path(main_dir,"inputs","gis_data",
 	"UIA_World_Countries_Boundaries-shp/World_Countries__Generalized_.shp"))
 target_iso <- c("US")
 target_countries <- world_countries[world_countries@data$ISO %in% target_iso,]
 	## create polygon for clipping points later, one in each projection
 target_countries.wgs <- spTransform(target_countries,wgs.proj)
 boundary.wgs <- aggregate(target_countries.wgs,dissolve = TRUE)
-#target_countries.aea <- spTransform(target_countries,aea.proj)
-#boundary.aea <- aggregate(target_countries.aea,dissolve = TRUE)
 
 ################################################################################
 ## Calculate geographic and ecological coverage of ex situ collections
@@ -343,7 +341,7 @@ for(sp in 1:length(target_sp)){
 	if(!is.na(manual.edit$keep)){
 		keep <- unlist(strsplit(manual.edit$keep,"; "))
 		add <- insitu_raw %>% filter(UID %in% keep)
-		insitu <- full_join(insitu,add)
+		insitu <- suppressMessages(full_join(insitu,add))
 	}; nrow(insitu)
 
 	### CALCULATE EOO (convex hull)
@@ -355,7 +353,10 @@ for(sp in 1:length(target_sp)){
 
 	## create df with just ex situ points
 	exsitu <- insitu %>% filter(database == "Ex_situ")
-	exsitu <- exsitu %>% filter(datasetName == "MortonArb")
+
+	### TURN THIS ON TO CALCULATE FOR MORTON ACCESSIONS ONLY
+	#exsitu <- exsitu %>% filter(datasetName == "MortonArb")
+
 		# check there are ex situ points, if not skip to end (can't do calculations)
 	if(nrow(exsitu) == 0){
 	  # add text results to summary table
@@ -440,63 +441,93 @@ for(sp in 1:length(target_sp)){
 
 ## write summary table
 summary_tbl
-write.csv(summary_tbl, file.path(main_dir,"outputs","ExSituCoverage_BufferTable_MortonOnly_6_30_21.csv"),
-	row.names = F)
+write.csv(summary_tbl, file.path(main_dir,"outputs","exsitu_coverage",
+	"ExSituCoverage_BufferTable_MortonOnly_6_30_21.csv"), row.names = F)
 
+################################################################################
+# Map
 
-	### MAP
+#		I've left this section separate, for experimenting with leaflet and
+# 	visualizing data for individual species (you have to manually select your
+#		target species); it could easily be part of the loop above if desired in
+#		the future, if we want all these maps saved.
 
-	# create map to visualize buffer and point data
-	geo_map <- leaflet() %>%
-		## background
-		addProviderTiles("Esri.WorldGrayCanvas",
-			options = providerTileOptions(maxZoom = 10)) %>%
-		## state boundaries
-		#addPolygons(data = state_bound,
-		#	fillOpacity = 0, color = "#757575", weight = 1.5, opacity = 1) %>%
-		## in situ buffers
-		#addPolygons(data = create.buffers(insitu,50000,wgs.proj,wgs.proj),
-		#	smoothFactor = 0.5,	weight = 6, color = "#de5f5f", fillOpacity = 0.35) %>%
-		## in situ points
-		addCircleMarkers(data = insitu, lng = ~decimalLongitude, lat = ~decimalLatitude,
-			#popup = ~paste("In situ:", Pop),
-			radius = 4, fillOpacity = 0.9, stroke = F, color = "#de5f5f") %>%
-		## ex situ buffers
-		#addPolygons(data = create.buffers(exsitu,50000,wgs.proj,wgs.proj),
-		#	smoothFactor = 0.5, weight = 1, color = "#2426bd", fillOpacity = 0.35) %>%
-		## ex situ points
-		addCircleMarkers(data = exsitu, lng = ~decimalLongitude, lat = ~decimalLatitude,
-			#popup = ~paste("Ex situ:", Pop),
-			radius = 4, fillOpacity = 0.9, stroke = F, color = "#2426bd") %>%
-		## title, legend, scalebar, and zoom
-		addControl("Quercus havardii in situ distribution and wild collection sites of ex situ accessions",
-			position = "topright") %>%
-		addLegend(labels =
-			c(paste0("Geographic range (occurrence points and 50 km buffers)"),
-				paste0("Populations sampled for ex situ (collection locations and 50 km buffers)")),
-			colors = c("#de5f5f","#2426bd"), title = "Legend",
-			position = "bottomright", opacity = 0.8) %>%
-		addScaleBar(position = "bottomleft",
-			options = scaleBarOptions(maxWidth = 150)) %>%
-		setView(-106, 36, zoom = 6)
+################################################################################
 
-	# view map
-	geo_map
-
-	# save map
-	htmlwidgets::saveWidget(geo_map, file = "Quercus_havardii_buffer_map_50km.html")
-
-
-}
-
-
-
-
-
-
+# if you'd like to have state borders:
+# read in state polygons using rnaturalearth package
+state_bound <- ne_states(country="united states of america")
 
 # transform ecoregion polygons to WGS84, for mapping
 ecol4_wgs <- spTransform(ecol4,wgs.proj)
+
+## CHOOSE TARGET SPECIES TO MAP
+target_sp # view target species
+sp <- 6 # select one to work with
+cat("\tMapping ", target_sp[sp])
+
+## the next section is simply copied from above; the flow could eventually be
+#		improved so its not just repeated, but the map is not a necessary part of
+#		the above calculations and is sometimes easier to view individually as
+#		desired, so I'm just repeating for now
+## --------------------------------------------------------------------
+### READ IN AND PREP POINT DATA
+	## read in occurrence points (includes ex situ)
+	insitu_raw <- read.csv(file.path(main_dir,"outputs","spp_edited_points",
+		paste0(target_sp[sp],".csv")), na.strings=c("","NA"), stringsAsFactors = F)
+		nrow(insitu_raw)
+	 spp.rl.dist <- native_dist[which(native_dist$species_name_acc == gsub("_"," ",target_sp[sp])),]
+	## filter as desired
+	 insitu <- insitu_raw %>%
+	   filter(database == "Ex_situ" |
+	     (.cen & .inst & .con & .outl & #.urb & .yr1950 & .yr1980 & .yrna &
+	     #(.gtsnative | is.na(.gtsnative)) &
+	     #(.rlnative  | is.na(.rlnative)) &
+	     #(.rlintroduced | is.na(.rlintroduced)) &
+	     basisOfRecord != "FOSSIL_SPECIMEN" & basisOfRecord != "LIVING_SPECIMEN" &
+	     establishmentMeans != "INTRODUCED" & establishmentMeans != "MANAGED" &
+	     establishmentMeans != "INVASIVE"))
+	  if(!is.na(spp.rl.dist$rl_native_dist)){
+	     insitu <- insitu %>%
+	     		filter(.rlnative | is.na(.rlnative))
+			 dist_filter_val <- "RL"
+	  } else if(!is.na(spp.rl.dist$gts_native_dist)){
+    	 insitu <- insitu %>%
+	     		filter(.gtsnative | is.na(.gtsnative))
+			 dist_filter_val <- "GTS"
+	  } else {
+			 dist_filter_val <- "N/A"
+		}
+		nrow(insitu)
+	## check document with manual point edits to see if anything needs to be added back or removed
+	manual.edit <- pt_edits[which(pt_edits$species_name_acc == gsub("_"," ",target_sp[sp])),]
+		# bounding box
+	if(!is.na(manual.edit$bounding_box)){
+		bounds <- unlist(strsplit(manual.edit$bounding_box,"; "))
+		for(i in 1:length(bounds)){
+			within <- unlist(strsplit(bounds[i],", "))
+			insitu <- insitu %>%
+				filter(!(decimalLongitude > as.numeric(within[1]) &
+				decimalLongitude < as.numeric(within[3]) &
+				decimalLatitude > as.numeric(within[2]) &
+				decimalLatitude < as.numeric(within[4]))) }
+	}; nrow(insitu)
+		# remove
+	if(!is.na(manual.edit$remove)){
+		remove <- unlist(strsplit(manual.edit$remove,"; "))
+		insitu <- insitu %>% filter(!(UID %in% remove))
+	}; nrow(insitu)
+		# add back
+	if(!is.na(manual.edit$keep)){
+		keep <- unlist(strsplit(manual.edit$keep,"; "))
+		add <- insitu_raw %>% filter(UID %in% keep)
+		insitu <- suppressMessages(full_join(insitu,add))
+	}; nrow(insitu)
+	## create df with just ex situ points
+	exsitu <- insitu %>% filter(database == "Ex_situ")
+## --------------------------------------------------------------------
+
+### CREATE MAP
 
 # select only ecoregions that are within the buffers; otherwise map takes a
 #		long time to load in browser and colors are not distinct enough
@@ -509,201 +540,60 @@ ecol4_pal <- colorFactor(palette = "Set2",domain = ecol4_sel@data$US_L4NAME,
 	reverse = F, na.color = "white")
 
 # create map to visualze species distribution and ecoregions
-# 	uncomment the section for Level III or Level IV ecoregions, depending
-#			on which you're wanting to map
-eco_map <- leaflet() %>%
+# 	note that you can comment out any section to remove that element
+coverage_map <- leaflet() %>%
 	## background
 	addProviderTiles("Esri.WorldGrayCanvas",#"Esri.WorldShadedRelief",#"Esri.WorldTerrain",
 		options = providerTileOptions(maxZoom = 10)) %>%
-	addPolygons(
-	## EPA Level III ecoregions
-	#	data = ecol3_sel,
-	#	fillColor = ~ecol3_pal(ecol3_sel@data$US_L3NAME), fillOpacity = 0.6,
-	#	color = ~ecol3_pal(ecol3_sel@data$US_L3NAME), weight = 1, opacity = 1) %>%
 	## EPA Level IV ecoregions
+	addPolygons(
 		data = ecol4_sel,
 		fillColor = ~ecol4_pal(ecol4_sel@data$US_L4NAME), fillOpacity = 0.6,
 		color = ~ecol4_pal(ecol4_sel@data$US_L4NAME), weight = 0.5, opacity = 1) %>%
-	## state boundaries
-	#addPolygons(data = state_bound,
-	#	fillOpacity = 0, color = "#969696", weight = 1.5, opacity = 1) %>%
-	## in situ buffers
-	addPolygons(data = create.buffers(insitu,50000,wgs.proj,wgs.proj),
-		smoothFactor = 0.5,	weight = 2.5, color = "#1c1c1b", fillOpacity = 0.2) %>%
-	## in situ points
-	addCircleMarkers(data = insitu, lng = ~decimalLongitude, lat = ~decimalLatitude,
-		#popup = ~paste("In situ:", Pop),
-		radius = 4, fillOpacity = 1, stroke = F, color = "#1c1c1b") %>%
-	## ex situ buffers
-	addPolygons(data = create.buffers(exsitu,50000,wgs.proj,wgs.proj),
-		smoothFactor = 0.5,	weight = 1, opacity = 1, color = "#b0f6f7", fillOpacity = 0.3) %>%
-	## ex situ points
-	addCircleMarkers(data = exsitu, lng = ~decimalLongitude, lat = ~decimalLatitude,
-		#popup = ~paste("In situ:", Pop),
-		radius = 4, fillOpacity = 1, stroke = F, color = "#b0f6f7") %>%
-	## title, legend, scalebar, and zoom
-	#addControl(paste0("Quercus havardii in situ distribution and U.S. EPA Level ",level," Ecoregions"),
-	#	position = "topright") %>%
-	addLegend(labels =
-		c("Geographic range (occurrence points and 50 km buffers)",
-			"Populations sampled for ex situ (collection locations and 50 km buffers)",
-			"Background colors show U.S. EPA Level IV Ecoregions"),
-		colors = c("#1c1c1b","#b0f6f7","#d6ccb4"), title = "Legend",
-		position = "bottomright", opacity = 0.8) %>%
-	addScaleBar(position = "bottomleft",
-		options = scaleBarOptions(maxWidth = 150)) %>%
-	setView(-104, 36, zoom = 6)
-# view map
-eco_map
-
-"Background colors show U.S. EPA Level IV Ecoregions that fall within buffers")),
-colors = c("#363636","#d6ccb4"), title = "Legend", position = "bottomright",
-opacity = 0.8) %>%
-
-
-
-
-
-
-################################################################################
-# E) Create summary table of results
-################################################################################
-
-summary_tbl <- data.frame(
-	Method = c("Geographic","Geographic","Geographic",
-						 "Ecological, Level III","Ecological, Level III","Ecological, Level III",
-						 "Ecological, Level IV","Ecological, Level IV","Ecological, Level IV"),
-	Buffer_km = c("100","50","10",
-								"100","50","10",
-								"100","50","10"),
-	Overall = c(geo_coverage_100,geo_coverage_50,geo_coverage_10,
-							eco3_coverage_100,eco3_coverage_50,eco3_coverage_10,
-							eco4_coverage_100,eco4_coverage_50,eco4_coverage_10),
-	East = c(geo_coverage_100e,geo_coverage_50e,geo_coverage_10e,
-					 eco3_coverage_100e,eco3_coverage_50e,eco3_coverage_10e,
-					 eco4_coverage_100e,eco4_coverage_50e,eco4_coverage_10e),
-	West = c(geo_coverage_100w,geo_coverage_50w,geo_coverage_10w,
-					 eco3_coverage_100w,eco3_coverage_50w,eco3_coverage_10w,
-					 eco4_coverage_100w,eco4_coverage_50w,eco4_coverage_10w),
-	stringsAsFactors=F)
-summary_tbl
-
-# write table to csv
-write.csv(summary_tbl, file.path(local_dir,
-	"Qhavardii_GeoEco_exsitu_SummaryTbl.csv"),row.names = F)
-
-################################################################################
-# F) Map points and buffers
-################################################################################
-
-# create map to visualize buffer and point data
-geo_map <- leaflet() %>%
-	## background
-	addProviderTiles("Esri.WorldGrayCanvas",
-		options = providerTileOptions(maxZoom = 10)) %>%
-	## state boundaries
-	addPolygons(data = state_bound,
-		fillOpacity = 0, color = "#757575", weight = 1.5, opacity = 1) %>%
-	## in situ buffers
-	addPolygons(data = create.buffers(insitu,50000,wgs.proj,wgs.proj),
-		smoothFactor = 0.5,	weight = 6, color = "#de5f5f", fillOpacity = 0.35) %>%
-	## in situ points
-	addCircleMarkers(data = insitu, lng = ~longitude, lat = ~latitude,
-		popup = ~paste("In situ:", Pop),
-		radius = 4, fillOpacity = 0.9, stroke = F, color = "#de5f5f") %>%
-	## ex situ buffers
-	addPolygons(data = create.buffers(exsitu,50000,wgs.proj,wgs.proj),
-		smoothFactor = 0.5, weight = 1, color = "#2426bd", fillOpacity = 0.35) %>%
-	## ex situ points
-	addCircleMarkers(data = exsitu, lng = ~longitude, lat = ~latitude,
-		popup = ~paste("Ex situ:", Pop),
-		radius = 4, fillOpacity = 0.9, stroke = F, color = "#2426bd") %>%
-	## title, legend, scalebar, and zoom
-	addControl("Quercus havardii in situ distribution and wild collection sites of ex situ accessions",
-		position = "topright") %>%
-	addLegend(labels =
-		c(paste0("Geographic range (occurrence points and 50 km buffers)"),
-			paste0("Populations sampled for ex situ (collection locations and 50 km buffers)")),
-		colors = c("#de5f5f","#2426bd"), title = "Legend",
-		position = "bottomright", opacity = 0.8) %>%
-	addScaleBar(position = "bottomleft",
-		options = scaleBarOptions(maxWidth = 150)) %>%
-	setView(-106, 36, zoom = 6)
-
-# view map
-geo_map
-
-# save map
-htmlwidgets::saveWidget(geo_map, file = "Quercus_havardii_buffer_map_50km.html")
-
-################################################################################
-# G) Map ecoregions
-################################################################################
-
-# transform ecoregion polygons to WGS84, for mapping
-ecol4_wgs <- spTransform(ecol4,wgs.proj)
-
-# select only ecoregions that are within the buffers; otherwise map takes a
-#		long time to load in browser and colors are not distinct enough
-inter <- intersect.eco.buff(insitu,50000,wgs.proj,wgs.proj,ecol3)
-codes <- unique(inter@data$US_L3CODE)
-ecol3_sel <- ecol3_wgs[ecol3_wgs@data$US_L3CODE %in% codes,]
-inter <- intersect.eco.buff(insitu,50000,wgs.proj,wgs.proj,ecol4)
-codes <- unique(inter@data$US_L4CODE)
-ecol4_sel <- ecol4_wgs[ecol4_wgs@data$US_L4CODE %in% codes,]
-
-# create ecoregion color palette; can run display.brewer.all() to see options
-ecol3_pal <- colorFactor(palette = "Set2",domain = ecol3_sel@data$US_L3NAME,
-	reverse = F, na.color = "white")
-ecol4_pal <- colorFactor(palette = "Set2",domain = ecol4_sel@data$US_L4NAME,
-	reverse = F, na.color = "white")
-
-# comment out/uncomment based on which level you're mapping
-level <- "III"
-#level <- "IV"
-
-# create map to visualze species distribution and ecoregions
-# 	uncomment the section for Level III or Level IV ecoregions, depending
-#			on which you're wanting to map
-eco_map <- leaflet() %>%
-	## background
-	addProviderTiles("Esri.WorldGrayCanvas",#"Esri.WorldShadedRelief",#"Esri.WorldTerrain",
-		options = providerTileOptions(maxZoom = 10)) %>%
-	addPolygons(
-	## EPA Level III ecoregions
-		data = ecol3_sel,
-		fillColor = ~ecol3_pal(ecol3_sel@data$US_L3NAME), fillOpacity = 0.6,
-		color = ~ecol3_pal(ecol3_sel@data$US_L3NAME), weight = 1, opacity = 1) %>%
-	## EPA Level IV ecoregions
-		#data = ecol4_sel,
-		#fillColor = ~ecol4_pal(ecol4_sel@data$US_L4NAME), fillOpacity = 0.6,
-		#color = ~ecol4_pal(ecol4_sel@data$US_L4NAME), weight = 0.5, opacity = 1) %>%
 	## state boundaries
 	addPolygons(data = state_bound,
 		fillOpacity = 0, color = "#969696", weight = 1.5, opacity = 1) %>%
 	## in situ buffers
 	addPolygons(data = create.buffers(insitu,50000,wgs.proj,wgs.proj),
-		smoothFactor = 0.5,	weight = 2, color = "#363636", fillOpacity = 0.2) %>%
+		smoothFactor = 0.5,	weight = 2.5, color = "#1c1c1b", fillOpacity = 0.2) %>%
+	## ex situ buffers
+	addPolygons(data = create.buffers(exsitu,50000,wgs.proj,wgs.proj),
+		smoothFactor = 0.5,	weight = 1, opacity = 1, color = "#b0f6f7",
+		fillOpacity = 0.3) %>%
 	## in situ points
-	addCircleMarkers(data = insitu, lng = ~longitude, lat = ~latitude,
-		popup = ~paste("In situ:", Pop),
-		radius = 4, fillOpacity = 0.9, stroke = F, color = "#363636") %>%
-	## title, legend, scalebar, and zoom
-	addControl(paste0("Quercus havardii in situ distribution and U.S. EPA Level ",level," Ecoregions"),
+	addCircleMarkers(data = insitu,
+		lng = ~decimalLongitude, lat = ~decimalLatitude,
+		popup = ~paste("Source(s):", all_source_databases),
+		radius = 4, fillOpacity = 1, stroke = F, color = "#1c1c1b") %>%
+	## ex situ points
+	addCircleMarkers(data = exsitu,
+		lng = ~decimalLongitude, lat = ~decimalLatitude,
+		popup = ~paste("Garden:", datasetName),
+		radius = 4, fillOpacity = 1, stroke = F, color = "#b0f6f7") %>%
+			# could add another layer that highlights just the Morton points or
+			#		could use a color palette based on the "database" column :)
+	## title
+	addControl(paste0(target_sp[sp],
+			" in situ distribution and representation in ex situ collections"),
 		position = "topright") %>%
+	## legend
 	addLegend(labels =
-		c("Geographic range of Quercus havardii (occurrence points and 50 km buffers)",
-			paste0("Background colors show U.S. EPA Level ",level," Ecoregions that fall within buffers")),
-		colors = c("#363636","#d6ccb4"), title = "Legend", position = "bottomright",
-		opacity = 0.8) %>%
+		c("Geographic range (occurrence points and 50 km buffers)",
+			"Populations sampled for ex situ (wild collection locations and 50 km buffers)",
+			"Background colors show U.S. EPA Level IV Ecoregions"),
+		colors = c("#1c1c1b","#b0f6f7","#d6ccb4"), title = "Legend",
+		position = "bottomright", opacity = 0.8) %>%
+	## scale bar
 	addScaleBar(position = "bottomleft",
 		options = scaleBarOptions(maxWidth = 150)) %>%
-	setView(-104, 36, zoom = 6)
+	## pick coords for center of frame and zoom level when map first appears
+	setView(-97, 40, zoom = 5)
 
 # view map
-eco_map
+coverage_map
 
 # save map
-htmlwidgets::saveWidget(eco_map, file = "Quercus_havardii_ecoregions_L3.html")
-	# level IV is too big so can't save
-#htmlwidgets::saveWidget(eco_map, file = "Quercus_havardii_ecoregions_L4.html")
+# if you have too many points or layers, the map will be too big and can't save
+htmlwidgets::saveWidget(coverage_map,
+	file = file.path(main_dir,"outputs","exsitu_coverage",
+		paste0(target_sp[sp],"-exsitu_coverage_interactive_map.html")))
