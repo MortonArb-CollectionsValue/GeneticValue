@@ -3,7 +3,7 @@
 library(PerformanceAnalytics)
 
 #Set up paths
-data_dir <- "G:/Shared drives/IMLS MFA/occurrence_points/outputs"
+data_dir <- "G:/Shared drives/IMLS MFA/occurrence_points/outputs/exsitu_coverage"
 output_dir <- "G:/Shared drives/IMLS MFA/Genetic diversity value"
 
 #Read in file
@@ -54,7 +54,7 @@ eco_geo_results_LC<-eco_geo_results[which(eco_geo_results[,14]=="LC"),]
 eco_geo_results_TH<-eco_geo_results[which(eco_geo_results[,14]!="LC"),]
 eco_geo_results_Q_TH<-eco_geo_results[intersect(which(eco_geo_results[,14]!="LC"),which(substr(eco_geo_results[,1],1,1)=="Q")),]
 
-#This applies the function to subsets of: 
+#This applies the function to subsets of:
 #				all, 			US, 				LC, 			Threatened
 #and saves as matrix with each row being one of those in the above function
 list_all_corr<-lapply(list(eco_geo_results,eco_geo_results_usa,eco_geo_results_LC,eco_geo_results_TH),eco_geo_corr)
@@ -76,7 +76,7 @@ dev.off()
 #So, we have 10 different measures, some of which are highly correlated, some not. How to reconcile, choose among them for tanking
 all_ranks<-apply(eco_geo_results[,2:(ncol(eco_geo_results)-2)],2,rank)
 #Could take the mean or majority decision...
-#There are two ways to get agreement across all of them 
+#There are two ways to get agreement across all of them
 #One way to actually rank species is to identify those that most frequently are ranked in a given bunch, say in the top 10
 species_ranked1<-data.frame(sp_names_wcoll,rowSums(all_ranks<10))
 #Another way to do actually rank species is to take the mean across rows in the rank order
@@ -86,7 +86,7 @@ colnames(species_ranked1)<-c("sp","rank"); colnames(species_ranked2)<-c("sp","ra
 #It really doesn't matter which approach :)
 cbind(species_ranked1[order(species_ranked1$rank),],species_ranked2[order(species_ranked2$rank,decreasing=T),])
 
-#But let's examine more closely the individual columns and how they differ 
+#But let's examine more closely the individual columns and how they differ
 #Could look at those that might be most different and figure out why
 species_ranked_geo10<-data.frame("sp"=sp_names_wcoll,"rank-geo10"=all_ranks[,1])
 species_ranked_geo50<-data.frame("sp"=sp_names_wcoll,"rank-geo50"=all_ranks[,2])
@@ -103,10 +103,10 @@ cbind(species_ranked_geo50[order(species_ranked_geo50$rank),],
 	species_ranked_geo100[order(species_ranked_geo100$rank),],
 	species_ranked_eco50[order(species_ranked_eco50$rank),],
 	species_ranked_ecous50[order(species_ranked_ecous50$rank),])
-	
+
 #TO DO ADD IN EMILY CODE FOR LINES
 
-#How to get the difference in new rank from old rank 
+#How to get the difference in new rank from old rank
 #match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_geo100[order(species_ranked_geo100$rank),1])-1:41
 count_changes<-function(list_ranks,base=1){
 	base_order<-list_ranks[[base]][order(list_ranks[[base]]$rank),1]
@@ -152,14 +152,14 @@ cbind(species_ranked_geo50[order(species_ranked_geo50$rank),],
 	species_ranked_geo100[order(species_ranked_geo100$rank),],
 	species_ranked_eco50[order(species_ranked_eco50$rank),],
 	species_ranked_ecous50[order(species_ranked_ecous50$rank),])
-	
+
 #TO DO ADD IN EMILY CODE FOR LINES
 
-#Running examine_changes without specifying base will compare to the first in the list 
+#Running examine_changes without specifying base will compare to the first in the list
 examine_changes<-count_changes(list(species_ranked_geo50,species_ranked_geo10,species_ranked_geo100,species_ranked_geo500,species_ranked_eco10,species_ranked_eco50,species_ranked_eco100,species_ranked_ecous10, species_ranked_ecous50,species_ranked_ecous100))
 colSums(abs(examine_changes[,-1])>5)
 
-#Running examine_changes iteratively through comparing to base list 
+#Running examine_changes iteratively through comparing to base list
 for (j in 1:10){
 	examine_changes<-count_changes(list(species_ranked_geo10,species_ranked_geo50,species_ranked_geo100,species_ranked_geo500,species_ranked_eco10,species_ranked_eco50,species_ranked_eco100,species_ranked_ecous10, species_ranked_ecous50,species_ranked_ecous100),base=j)
 	print(colnames(examine_changes)[j+1])
