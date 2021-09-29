@@ -5,6 +5,10 @@ library(PerformanceAnalytics)
 #Set up paths
 data_dir <- "G:/Shared drives/IMLS MFA/occurrence_points/outputs/exsitu_coverage"
 output_dir <- "G:/Shared drives/IMLS MFA/Genetic diversity value"
+	# on a Mac
+	#data_dir <- "/Volumes/GoogleDrive/Shared drives/IMLS MFA/occurrence_points/outputs/exsitu_coverage"
+	#output_dir <- "/Volumes/GoogleDrive/Shared drives/IMLS MFA/Genetic diversity value"
+
 
 #Read in file
 eco_geo_results<-read.csv(file.path(data_dir,"ExSituCoverage_BufferTable_6_30_21.csv"))
