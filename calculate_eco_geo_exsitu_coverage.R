@@ -45,7 +45,7 @@
 
 ## [code chunk from Shannon M. Still]
 my.packages <- c("leaflet","rgdal","raster","rgeos","GeoRange","rnaturalearth",
-	"dplyr")
+	"dplyr","sf")
 #install.packages (my.packages) # turn on to install current versions
 lapply(my.packages, require, character.only=TRUE)
 rm(my.packages)
@@ -245,6 +245,35 @@ native_dist <- native_dist %>% dplyr::select(species_name_acc,rl_native_dist,
 # Read in polygon data
 ################################################################################
 
+## haven't gotten the PA layer working yet - it is very large and I think needs
+#		to be flatted/dissolved (also called "union") so its a single feature instead
+#		of multiple features; this should help with the size also
+## read in shapefile of global protected areas
+	## CITATION: UNEP-WCMC and IUCN (2021), Protected Planet: The World Database on Protected Areas (WDPA) [Online], September 2021, Cambridge, UK: UNEP-WCMC and IUCN. Available at: www.protectedplanet.net.
+# since the shapefile is large, the source has it split into three;
+#		we will load each then merge into one
+#pa0 <- sf::st_read(file.path(main_dir,"inputs","gis_data","WDPA_Oct2021_Public_shp",
+#	"WDPA_Oct2021_Public_shp_0","WDPA_Oct2021_Public_shp-polygons.shp"))
+#pa1 <- sf::st_read(file.path(main_dir,"inputs","gis_data","WDPA_Oct2021_Public_shp",
+#	"WDPA_Oct2021_Public_shp_1","WDPA_Oct2021_Public_shp-polygons.shp"))
+#pa2 <- sf::st_read(file.path(main_dir,"inputs","gis_data","WDPA_Oct2021_Public_shp",
+#	"WDPA_Oct2021_Public_shp_2","WDPA_Oct2021_Public_shp-polygons.shp"))
+#pa_list <- list(pa0,pa1,pa2)
+#pa <- do.call(rbind,pa_list)
+#rm(pa0);rm(pa1);rm(pa2)
+	# reproject to make sure same crs as buffer layer for later intersect
+#st_crs(pa) # look at final ID number
+#pa_proj <- st_transform(pa,crs = 4326)
+#rm(pa)
+#	# dissolve polygons into one layer (multi to single)
+#	## !! throws an error due to invalid polygons.. also takes a long time
+#pa_diss <- st_union(pa_proj)
+#rm(pa_proj)
+#	# ? write file to use so don't have to merge next time ? (didn't try this yet)
+#st_write(pa_diss, file.path(main_dir,"inputs","gis_data",
+#	"WDPA_Oct2021_Public_shp-polygons-dissolved",
+#	"WDPA_Oct2021_Public_shp-polygons-dissolved.shp"))
+
 # read in shapefile of global ecoregions
 ecoregions <- readOGR(file.path(main_dir,"inputs","gis_data",
 	"official","wwf_terr_ecos.shp"))
@@ -279,7 +308,8 @@ summary_tbl <- data.frame(
 	eco_10 = "start", eco_50 = "start", eco_100 = "start",
 	eco_usl4_10 = "start", eco_usl4_50 = "start", eco_usl4_100 = "start",
 	EOO = "start",
-	dist_filter = "start",
+	dist_filter = "start"#,
+	#pa_coverage = "start",
 	stringsAsFactors=F)
 
 ### CYCLE THROUGH TARGET SPECIES TO CALCULATE EX SITU COVERAGE
@@ -350,6 +380,19 @@ for(sp in 1:length(target_sp)){
 	hull_area <- CHullAreaEarth(insitu$decimalLongitude,insitu$decimalLatitude)
 	hull_area <- round(hull_area,0)
 	print(paste("EOO:",hull_area,"km²"))
+
+	### CALCULATE PROTECTED AREA COVERAGE
+
+	## I think it will be something close to this, but haven't gotten the 
+	##		PA layer working yet
+	#	# create 10km buffers around in situ points
+	#buff_10_insitu <- create.buffers(insitu,10000,wgs.proj,wgs.proj)
+	#	# make sure buffer layer is in same projection as PA layer
+	#buff_10_insitu_sf <- st_transform(st_as_sf(buff_10_insitu),crs = 4326)
+	#	# intersect the buffer and PA layers to get overlap
+	#buff_pa_inter <- st_intersection(buff_10_insitu_sf, pa_proj)
+	#	# compare the buffer area to the buff_pa_inter area to get % coverage
+	#.....
 
 	## create df with just ex situ points
 	exsitu <- insitu %>% filter(database == "Ex_situ")
