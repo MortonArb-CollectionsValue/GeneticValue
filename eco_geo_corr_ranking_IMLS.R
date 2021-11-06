@@ -11,6 +11,7 @@ output_dir <- "G:/Shared drives/IMLS MFA/Genetic diversity value"
 
 
 #Read in file
+eco_geo_results<-read.csv("ExSituCoverage_BufferTable_6_30_21.csv")
 eco_geo_results<-read.csv(file.path(data_dir,"ExSituCoverage_BufferTable_6_30_21.csv"))
 #Pull species names
 sp_names_all<-eco_geo_results[,1]
@@ -103,10 +104,16 @@ species_ranked_ecous10<-data.frame("sp"=sp_names_wcoll,"rank-ecous10"=all_ranks[
 species_ranked_ecous50<-data.frame("sp"=sp_names_wcoll,"rank-ecous50"=all_ranks[,9])
 species_ranked_ecous100<-data.frame("sp"=sp_names_wcoll,"rank-ecous100"=all_ranks[,10])
 #Examine them by eye
-cbind(species_ranked_geo50[order(species_ranked_geo50$rank),],
+write.csv(cbind(species_ranked_geo10[order(species_ranked_geo10$rank),],
+	species_ranked_geo50[order(species_ranked_geo50$rank),],
 	species_ranked_geo100[order(species_ranked_geo100$rank),],
+	species_ranked_geo500[order(species_ranked_geo500$rank),],
+	species_ranked_eco10[order(species_ranked_eco10$rank),],
 	species_ranked_eco50[order(species_ranked_eco50$rank),],
-	species_ranked_ecous50[order(species_ranked_ecous50$rank),])
+	species_ranked_eco100[order(species_ranked_eco100$rank),],
+	species_ranked_ecous10[order(species_ranked_ecous10$rank),],
+	species_ranked_ecous50[order(species_ranked_ecous50$rank),],
+	species_ranked_ecous100[order(species_ranked_ecous100$rank),]),file="compare_genetic_ranks.csv")
 
 #TO DO ADD IN EMILY CODE FOR LINES
 
