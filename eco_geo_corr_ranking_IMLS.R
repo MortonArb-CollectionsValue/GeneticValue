@@ -71,7 +71,7 @@ dev.off()
 #The best are typically geo50, geo100 and eco 100, sometimes eco50.  When the US EPA is good, the 50 and 100 are always 'better' than the 10
 
 #BUT should probably find highest pairs and drop one of each pair... iteratively
-
+#geo100 and eco100 have highest.. drop.  Maybe also drop geo10
 
 
 #####################
@@ -93,60 +93,20 @@ cbind(species_ranked1[order(species_ranked1$rank),],species_ranked2[order(specie
 
 #But let's examine more closely the individual columns and how they differ
 #Could look at those that might be most different and figure out why
-species_ranked_geo10<-data.frame("sp"=sp_names_wcoll,"rank-geo10"=all_ranks[,1])
-species_ranked_geo50<-data.frame("sp"=sp_names_wcoll,"rank-geo50"=all_ranks[,2])
-species_ranked_geo100<-data.frame("sp"=sp_names_wcoll,"rank-geo100"=all_ranks[,3])
-species_ranked_geo500<-data.frame("sp"=sp_names_wcoll,"rank-geo500"=all_ranks[,4])
-species_ranked_eco10<-data.frame("sp"=sp_names_wcoll,"rank-eco10"=all_ranks[,5])
-species_ranked_eco50<-data.frame("sp"=sp_names_wcoll,"rank-eco50"=all_ranks[,6])
-species_ranked_eco100<-data.frame("sp"=sp_names_wcoll,"rank-eco100"=all_ranks[,7])
-species_ranked_ecous10<-data.frame("sp"=sp_names_wcoll,"rank-ecous10"=all_ranks[,8])
-species_ranked_ecous50<-data.frame("sp"=sp_names_wcoll,"rank-ecous50"=all_ranks[,9])
-species_ranked_ecous100<-data.frame("sp"=sp_names_wcoll,"rank-ecous100"=all_ranks[,10])
 #Examine them by eye
-write.csv(cbind(species_ranked_geo10[order(species_ranked_geo10$rank),],
-	species_ranked_geo50[order(species_ranked_geo50$rank),],
-	species_ranked_geo100[order(species_ranked_geo100$rank),],
-	species_ranked_geo500[order(species_ranked_geo500$rank),],
-	species_ranked_eco10[order(species_ranked_eco10$rank),],
-	species_ranked_eco50[order(species_ranked_eco50$rank),],
-	species_ranked_eco100[order(species_ranked_eco100$rank),],
-	species_ranked_ecous10[order(species_ranked_ecous10$rank),],
-	species_ranked_ecous50[order(species_ranked_ecous50$rank),],
-	species_ranked_ecous100[order(species_ranked_ecous100$rank),]),file="compare_genetic_ranks.csv")
 
-#TO DO ADD IN EMILY CODE FOR LINES
-
-#How to get the difference in new rank from old rank
-#match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_geo100[order(species_ranked_geo100$rank),1])-1:41
-count_changes<-function(list_ranks,base=1){
-	base_order<-list_ranks[[base]][order(list_ranks[[base]]$rank),1]
-	examine_changes<-data.frame(base_order)
-	for (i in 1:length(list_ranks)){
-		ranks_diff<-match(base_order,list_ranks[[i]][order(list_ranks[[i]]$rank),1])
-		examine_changes<-cbind(examine_changes,match(base_order,list_ranks[[i]][order(list_ranks[[i]]$rank),1])-1:length(base_order))
-		colnames(examine_changes)[i+1]<-names(list_ranks[[i]][2])
-	}
-	#examine_changes<-examine_changes[,-2]
-	examine_changes
-}
-#compare to geo50
-examine_changes<-count_changes(list(species_ranked_geo50,species_ranked_geo10,species_ranked_geo100,species_ranked_geo500,species_ranked_eco10,species_ranked_eco50,species_ranked_eco100,species_ranked_ecous10, species_ranked_ecous50,species_ranked_ecous100))
-colSums(abs(examine_changes[,-1])>5)
-
-#Generalizing further
-#Same as above but just for Threatened (well, non LC)
-these_results<-eco_geo_results
+#Can look at all of them or just subsets such as just for Threatened (well, non LC) by commenting in/out the following
+#these_results<-eco_geo_results
 #these_results<-eco_geo_results_Q_TH
 #these_results<-eco_geo_results_usa
-#these_results<-eco_geo_results_TH
+these_results<-eco_geo_results_TH
 
 all_ranks<-apply(these_results[,2:(ncol(these_results)-2)],2,rank)
 
-these_names<-sp_names_wcoll
+#these_names<-sp_names_wcoll
 #these_names<-sp_names_Q_TH
 #these_names<-sp_names_usa
-#these_names<-sp_names_TH
+these_names<-sp_names_TH
 
 species_ranked_geo10<-data.frame("sp"=these_names,"rank-geo10"=all_ranks[,1])
 species_ranked_geo50<-data.frame("sp"=these_names,"rank-geo50"=all_ranks[,2])
@@ -158,26 +118,57 @@ species_ranked_eco100<-data.frame("sp"=these_names,"rank-eco100"=all_ranks[,7])
 species_ranked_ecous10<-data.frame("sp"=these_names,"rank-ecous10"=all_ranks[,8])
 species_ranked_ecous50<-data.frame("sp"=these_names,"rank-ecous50"=all_ranks[,9])
 species_ranked_ecous100<-data.frame("sp"=these_names,"rank-ecous100"=all_ranks[,10])
+
 #Examine them by eye
 cbind(species_ranked_geo50[order(species_ranked_geo50$rank),],
 	species_ranked_geo100[order(species_ranked_geo100$rank),],
 	species_ranked_eco50[order(species_ranked_eco50$rank),],
 	species_ranked_ecous50[order(species_ranked_ecous50$rank),])
-
+write.csv(cbind(species_ranked_geo10[order(species_ranked_geo10$rank),],
+	species_ranked_geo50[order(species_ranked_geo50$rank),],
+	species_ranked_geo100[order(species_ranked_geo100$rank),],
+	species_ranked_geo500[order(species_ranked_geo500$rank),],
+	species_ranked_eco10[order(species_ranked_eco10$rank),],
+	species_ranked_eco50[order(species_ranked_eco50$rank),],
+	species_ranked_eco100[order(species_ranked_eco100$rank),],
+	species_ranked_ecous10[order(species_ranked_ecous10$rank),],
+	species_ranked_ecous50[order(species_ranked_ecous50$rank),],
+	species_ranked_ecous100[order(species_ranked_ecous100$rank),]),file="compare_genetic_ranks.csv")
+	
 #TO DO ADD IN EMILY CODE FOR LINES
 
-#Running examine_changes without specifying base will compare to the first in the list
+#How to get the difference in new rank from old rank
+#match(species_ranked_geo50[order(species_ranked_geo50$rank),1],species_ranked_geo100[order(species_ranked_geo100$rank),1])-1:41
+
+count_changes<-function(list_ranks,base=1){
+	base_order<-list_ranks[[base]][order(list_ranks[[base]]$rank),1]
+	examine_changes<-data.frame(base_order)
+	for (i in 1:length(list_ranks)){
+		ranks_diff<-match(base_order,list_ranks[[i]][order(list_ranks[[i]]$rank),1])
+		examine_changes<-cbind(examine_changes,match(base_order,list_ranks[[i]][order(list_ranks[[i]]$rank),1])-1:length(base_order))
+		colnames(examine_changes)[i+1]<-names(list_ranks[[i]][2])
+	}
+	#examine_changes<-examine_changes[,-2]
+	examine_changes
+}
+
+#Running count_changes without specifying base will compare to the first in the list
 examine_changes<-count_changes(list(species_ranked_geo50,species_ranked_geo10,species_ranked_geo100,species_ranked_geo500,species_ranked_eco10,species_ranked_eco50,species_ranked_eco100,species_ranked_ecous10, species_ranked_ecous50,species_ranked_ecous100))
-colSums(abs(examine_changes[,-1])>5)
+colSums(abs(examine_changes[,-1])>4)
 
 #Running examine_changes iteratively through comparing to base list
 for (j in 1:10){
 	examine_changes<-count_changes(list(species_ranked_geo10,species_ranked_geo50,species_ranked_geo100,species_ranked_geo500,species_ranked_eco10,species_ranked_eco50,species_ranked_eco100,species_ranked_ecous10, species_ranked_ecous50,species_ranked_ecous100),base=j)
 	print(colnames(examine_changes)[j+1])
-	print(mean(colSums(abs(examine_changes[,-1])>5)))
+	print(colSums(abs(examine_changes[,-1])>4))
+	#print(mean(colSums(abs(examine_changes[,-1])>5)))
 }
 
-
+#look at some examples of species lists
+#low difference
+cbind(as.character(species_ranked_geo10[order(species_ranked_geo10[,2]),][,1]),as.character(species_ranked_geo50[order(species_ranked_geo50[,2]),][,1]))
+#high difference 
+cbind(as.character(species_ranked_geo50[order(species_ranked_geo50[,2]),][,1]),as.character(species_ranked_eco50[order(species_ranked_eco50[,2]),][,1]),as.character(species_ranked_ecous50[order(species_ranked_ecous50[,2]),][,1]))
 
 
 
