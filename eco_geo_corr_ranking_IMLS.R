@@ -79,10 +79,12 @@ dev.off()
 #####################
 
 #So, we have 10 different measures, some of which are highly correlated, some not. How to reconcile, choose among them for tanking
-all_ranks<-apply(eco_geo_results[,2:(ncol(eco_geo_results)-2)],2,rank)
+#The minus three removes the columns about threat ranking and EOO
+all_ranks<-apply(eco_geo_results[,2:(ncol(eco_geo_results)-3)],2,rank)
 #Could take the mean or majority decision...
 #There are two ways to get agreement across all of them
 #One way to actually rank species is to identify those that most frequently are ranked in a given bunch, say in the top 10
+#(this will get used again below)
 species_ranked1<-data.frame(sp_names_wcoll,rowSums(all_ranks<10))
 #Another way to do actually rank species is to take the mean across rows in the rank order
 species_ranked2<-data.frame(sp_names_wcoll,rowMeans(all_ranks))
@@ -165,13 +167,18 @@ for (j in 1:10){
 }
 
 #look at some examples of species lists
-#low difference
+#low difference between geo10 and geo50
 cbind(as.character(species_ranked_geo10[order(species_ranked_geo10[,2]),][,1]),as.character(species_ranked_geo50[order(species_ranked_geo50[,2]),][,1]))
-#high difference 
+#high difference between geo50 and eco50
 cbind(as.character(species_ranked_geo50[order(species_ranked_geo50[,2]),][,1]),as.character(species_ranked_eco50[order(species_ranked_eco50[,2]),][,1]),as.character(species_ranked_ecous50[order(species_ranked_ecous50[,2]),][,1]))
 
+#Let's look at the number of times a species shows up in the top 'bunch', say 7
+#pretty exciting some of these turn up well 
+all_ranks<-apply(eco_geo_results_TH[,2:(ncol(eco_geo_results_TH)-3)],2,rank)
+species_ranked1<-data.frame(sp_names_TH,rowSums(all_ranks<7))
+species_ranked1[order(species_ranked1[,2],decreasing=T),]
 
-
+#A little surprised, need to look in detail at a few like lobata, georgiana...
 
 eco_geo_results_usa<-eco_geo_results[-which(is.na(eco_geo_results[,10])),]
 sp_names_usa<-eco_geo_results_usa[,1]
