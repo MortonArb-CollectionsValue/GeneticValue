@@ -32,11 +32,11 @@ eco_geo_results[,ncol(eco_geo_results)]
 #Get just the percentage
 eco_geo_results[,2:(ncol(eco_geo_results)-2)]<-as.numeric(gsub("\\%.*","",as.matrix(eco_geo_results[,2:(ncol(eco_geo_results)-2)])))
 
+cols_eco_geo<-2:11
 
 #####################
 #	CORRELATIONS	#
 #####################
-cols_eco_geo<-2:11
 pdf(file="eco_geo_corr_plots.pdf")
 #Trying to figure out if any of the measures are especially bad/ different
 #Look for correlations among geographic measures and identify when correlation is low, with raw and ranked values
@@ -80,7 +80,7 @@ dev.off()
 
 #So, we have 10 different measures, some of which are highly correlated, some not. How to reconcile, choose among them for tanking
 #The minus three removes the columns about threat ranking and EOO
-all_ranks<-apply(eco_geo_results[,2:(ncol(eco_geo_results)-3)],2,rank)
+all_ranks<-apply(eco_geo_results[,cols_eco_geo],2,rank)
 #Could take the mean or majority decision...
 #There are two ways to get agreement across all of them
 #One way to actually rank species is to identify those that most frequently are ranked in a given bunch, say in the top 10
@@ -103,7 +103,7 @@ cbind(species_ranked1[order(species_ranked1$rank),],species_ranked2[order(specie
 #these_results<-eco_geo_results_usa
 these_results<-eco_geo_results_TH
 
-all_ranks<-apply(these_results[,2:(ncol(these_results)-2)],2,rank)
+all_ranks<-apply(these_results[,cols_eco_geo],2,rank)
 
 #these_names<-sp_names_wcoll
 #these_names<-sp_names_Q_TH
@@ -154,16 +154,19 @@ count_changes<-function(list_ranks,base=1){
 	examine_changes
 }
 
+#threshold for when 'movement' up or down is 'important' (20%, for Quercus its 3, for all sp its 4)
+move_thresh<-round(length(these_names)*.2)
+ 
 #Running count_changes without specifying base will compare to the first in the list
 examine_changes<-count_changes(list(species_ranked_geo50,species_ranked_geo10,species_ranked_geo100,species_ranked_geo500,species_ranked_eco10,species_ranked_eco50,species_ranked_eco100,species_ranked_ecous10, species_ranked_ecous50,species_ranked_ecous100))
-colSums(abs(examine_changes[,-1])>4)
+colSums(abs(examine_changes[,-1])>move_thresh)
 
 #Running examine_changes iteratively through comparing to base list
 for (j in 1:10){
 	examine_changes<-count_changes(list(species_ranked_geo10,species_ranked_geo50,species_ranked_geo100,species_ranked_geo500,species_ranked_eco10,species_ranked_eco50,species_ranked_eco100,species_ranked_ecous10, species_ranked_ecous50,species_ranked_ecous100),base=j)
 	print(colnames(examine_changes)[j+1])
-	print(colSums(abs(examine_changes[,-1])>4))
-	#print(mean(colSums(abs(examine_changes[,-1])>5)))
+	print(colSums(abs(examine_changes[,-1])>move_thresh))
+	#print(mean(colSums(abs(examine_changes[,-1])>move_thresh)))
 }
 
 #look at some examples of species lists
@@ -174,17 +177,11 @@ cbind(as.character(species_ranked_geo50[order(species_ranked_geo50[,2]),][,1]),a
 
 #Let's look at the number of times a species shows up in the top 'bunch', say 7
 #pretty exciting some of these turn up well 
-all_ranks<-apply(eco_geo_results_TH[,2:(ncol(eco_geo_results_TH)-3)],2,rank)
+#If want to do this with removal of highly correlated (geo10,geo100,ecous100), comment this back
+#cols_eco_geo<-c(3,5:10)
+all_ranks<-apply(eco_geo_results_TH[,cols_eco_geo],2,rank)
 species_ranked1<-data.frame(sp_names_TH,rowSums(all_ranks<7))
 species_ranked1[order(species_ranked1[,2],decreasing=T),]
-
-#A little surprised, need to look in detail at a few like lobata, georgiana...
-
-eco_geo_results_usa<-eco_geo_results[-which(is.na(eco_geo_results[,10])),]
-sp_names_usa<-eco_geo_results_usa[,1]
-cor(eco_geo_results_usa[,2:(ncol(eco_geo_results_usa)-2)],use="complete.obs")<.75
-cor(apply(eco_geo_results_usa[,2:(ncol(eco_geo_results_usa)-2)],2,rank))<.75
-sp_names_usa[rowSums(apply(eco_geo_results_usa[,2:(ncol(eco_geo_results_usa)-2)],2,rank)<10)]
 
 
 #So far I've looked at all species together the next step is look at RL Threatened vs. LC separate ranking
