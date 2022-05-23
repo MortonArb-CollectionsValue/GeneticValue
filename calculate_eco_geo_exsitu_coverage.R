@@ -45,7 +45,7 @@
 
 ## [code chunk from Shannon M. Still]
 my.packages <- c("leaflet","rgdal","raster","rgeos","GeoRange","rnaturalearth",
-	"dplyr","sf")
+	"dplyr","sf","ggplot2")
 #install.packages (my.packages) # turn on to install current versions
 lapply(my.packages, require, character.only=TRUE)
 rm(my.packages)
@@ -55,7 +55,11 @@ rm(my.packages)
 ################################################################################
 
 # either set manually:
-main_dir <- "/Volumes/GoogleDrive/Shared drives/IMLS MFA/occurrence_points"
+#main_dir <- "/Volumes/GoogleDrive-103729429307302508433/Shared drives/IMLS MFA/occurrence_points"
+	### for gap analysis of nine genera dataset
+main_dir <- "/Volumes/GoogleDrive-103729429307302508433/Shared drives/Global Tree Conservation Program/Gap Analyses/Conservation Gap Analysis of Priority Genera/occurrence_points"
+	### for gap analysis of US oaks 2020
+#main_dir <- "/Users/emily/Desktop/work/ArcGIS Map Layers Quercus_2020"
 
 # or use 0-1_set_workingdirectory.R script from OccurrencePoints repo:
 #source("./Documents/GitHub/OccurrencePoints/scripts/0-1_set_workingdirectory.R")
@@ -163,12 +167,12 @@ compare.ecol4.count <- function(insitu,exsitu,radius,pt_proj,buff_proj,eco){
 	# count number of ecoregions under buffers
 	print(paste("Based on ",radius/1000," km radius..."))
 	count_exsitu <- nrow(eco_exsitu@data %>% distinct(US_L4CODE))
-	print(paste0("Number of ecoregions under ex situ buffers: ",count_exsitu))
+	print(paste0("Number of US ecoregions under ex situ buffers: ",count_exsitu))
 	count_insitu <- nrow(eco_insitu@data %>% distinct(US_L4CODE))
-	print(paste0("Number of ecoregions under in situ buffers: ",count_insitu))
+	print(paste0("Number of US ecoregions under in situ buffers: ",count_insitu))
 	# calculate difference in number of ecoregions
 	eco_diff_percent <- (count_exsitu/count_insitu)*100
-	print(paste0("Percent ecological coverage: ", round(eco_diff_percent,2), "%"))
+	print(paste0("Percent US ecological coverage: ", round(eco_diff_percent,2), "%"))
 	txt <- format.cell(count_exsitu,count_insitu,eco_diff_percent)
 	return(txt)
 }
@@ -199,6 +203,16 @@ wgs.proj <- sp::CRS(SRS_string="EPSG:4326")
 #		Equal Earth Projection
 #		Warning shouldn't cause any errors; metadata says they're "overly cautious"
 aea.proj <- sp::CRS(SRS_string="EPSG:8857")
+
+################################################################################
+# Choose buffer sizes to use
+################################################################################
+
+# buffer size in kilometers = value/1000
+largest_buff <- 500000
+large_buff <- 100000
+med_buff <- 50000
+small_buff <- 20000
 
 ################################################################################
 # Choose target species
@@ -234,6 +248,13 @@ target_sp <- taxon_list %>% filter(grepl("^MAP",map_flag))
 target_sp <- sort(gsub(" ","_",target_sp$species_name_acc))
 length(target_sp)
 #target_sp <- target_sp[c(1:2,4:11,13:15,17:19,21:53)]
+	### for gap analysis of US oaks 2020
+	#target_sp <- c("Qacerifolia","Qajoensis","Qarkansana","Qaustrina","Qboyntonii",
+	#"Qcarmenensis","Qcedrosensis","Qchapmanii","Qcorneliusmulleri","Qdumosa",
+	#"Qengelmannii","Qgeorgiana","Qgraciliformis","Qhavardii","Qhinckleyi",
+	#"Qinopina","Qlaceyi","Qlobata","Qoglethorpensis","Qpacifica","Qpalmeri",
+	#"Qparvula","Qpumila","Qrobusta","Qsadleriana","Qsimilis","Qtomentella",
+	#"Qtoumeyi")
 # get native dist information to see if using RL (default) or GTS
 native_dist <- read.csv(file.path(main_dir,"inputs","known_distribution",
   "target_taxa_with_native_dist.csv"), header = T, na.strings = c("","NA"),
@@ -245,17 +266,73 @@ native_dist <- native_dist %>% dplyr::select(species_name_acc,rl_native_dist,
 # Read in polygon data
 ################################################################################
 
-## haven't gotten the PA layer working yet - it is very large and I think needs
+# trialing protected areas layer from Khoury et al. 2019 (raster version of WDPA)
+#		https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/WTLNRG
+#pa_raster <- raster(file.path(main_dir,"inputs","gis_data","dataverse_files",
+#	"wdpa_reclass.tif"))
+
+# haven't gotten the PA layer working yet - it is very large and I think needs
 #		to be flatted/dissolved (also called "union") so its a single feature instead
 #		of multiple features; this should help with the size also
 ## read in shapefile of global protected areas
-	## CITATION: UNEP-WCMC and IUCN (2021), Protected Planet: The World Database on Protected Areas (WDPA) [Online], September 2021, Cambridge, UK: UNEP-WCMC and IUCN. Available at: www.protectedplanet.net.
+	## CITATION: UNEP-WCMC and IUCN (2022), Protected Planet: The World Database on Protected Areas (WDPA) [Online], February 2022, Cambridge, UK: UNEP-WCMC and IUCN. Available at: www.protectedplanet.net.
+# As of January 2022, the WDPA includes data on 269,457 protected areas of
+#		which 96% were polygons and 4% points.
+
 # since the shapefile is large, the source has it split into three;
 #		we will load each then merge into one
-#pa0 <- sf::st_read(file.path(main_dir,"inputs","gis_data","WDPA_Oct2021_Public_shp",
-#	"WDPA_Oct2021_Public_shp_0","WDPA_Oct2021_Public_shp-polygons.shp"))
+
+	# read in shapefile
+pa0 <- sf::st_read(file.path(main_dir,"inputs","gis_data","WDPA_Jan2022_Public_shp",
+	"WDPA_Jan2022_Public_shp_0","WDPA_Jan2022_Public_shp-polygons.shp"))
+
+pa0 <- readOGR(file.path(main_dir,"inputs","gis_data","WDPA_Jan2022_Public_shp",
+	"WDPA_Jan2022_Public_shp_0","WDPA_Jan2022_Public_shp-polygons.shp"))
+
+	# look at its properties
+st_geometry_type(pa0)
+unique(st_geometry_type(pa0))
+st_crs(pa0)
+st_bbox(pa0)
+pa0 #Simple feature collection with 85,783 features and 30 fields
+unique(pa0$ISO3)
+	# select terrestrial PAs that are designated/established (not pending),
+	#		and in the U.S.
+pa0_terr_usa <- pa0 %>%
+	filter(MARINE != 2) %>%
+	filter(STATUS == "Inscribed" | STATUS == "Designated" | STATUS == "Established") %>% #metadata here: https://pp-import-production.s3.amazonaws.com/WDPA_Manual_1_5.pdf
+	filter(grepl("USA",ISO3)) %>%
+	select(WDPAID,NAME,DESIG_ENG,DESIG_TYPE,IUCN_CAT,REP_AREA,STATUS,OWN_TYPE,MANG_AUTH,ISO3)
+pa0_terr_usa #Simple feature collection with 1,919 features and 10 fields
+	# see if any polygons are invalid
+pa0_terr_check <- st_is_valid(pa0_terr_usa, reason = TRUE)
+which(pa0_terr_check != "Valid Geometry") # rows that are invalid
+pa0_terr_usa[142,] #Yukon Delta National Wildlife Refuge Marine Protected Area
+	# can plot if not too big/complicated of a PA; otherwise takes too long
+#ggplot() +
+#  geom_sf(data = pa0_terr_usa[142,], size = 1, color = "black", fill = "cyan1") +
+#  coord_sf()
+	# we will just remove that invalid polygon for now
+pa0_terr_usa <- pa0_terr_usa[-142,]
+	# I've tried 'make valid' but doesn't seem to resolve the union issues
+#iv1 <- st_make_valid(pa0_terr[16306,])
+	# extract the geometry of the conservation areas to a new variable
+	# to get rid of all other attributes
+pa0_outline <- st_geometry(pa0_terr_usa) %>% st_as_sf()
+pa0_outline #Simple feature collection with 1,918 features and 0 fields
+	# see if we can do a union with just the U.S. PAs
+pa0_terr_usa_union <- st_union(pa0_outline) # hung; ran all night and finished
+
+st_write(pa0_terr_usa_union, file.path(main_dir,"inputs","gis_data",
+	"WDPA_Jan2022_Public_shp","WDPA_Jan2022_Public_shp_0",
+	"WDPA_Jan2022_Public_shp-polygons-USA_terrestrial_union.shp"))
+
+
 #pa1 <- sf::st_read(file.path(main_dir,"inputs","gis_data","WDPA_Oct2021_Public_shp",
 #	"WDPA_Oct2021_Public_shp_1","WDPA_Oct2021_Public_shp-polygons.shp"))
+#pa1 <- st_cast(pa1$geometry[[4]], "POLYGON")
+#pa <- rbind(pa0,pa1)
+#plot(pa)
 #pa2 <- sf::st_read(file.path(main_dir,"inputs","gis_data","WDPA_Oct2021_Public_shp",
 #	"WDPA_Oct2021_Public_shp_2","WDPA_Oct2021_Public_shp-polygons.shp"))
 #pa_list <- list(pa0,pa1,pa2)
@@ -269,10 +346,10 @@ native_dist <- native_dist %>% dplyr::select(species_name_acc,rl_native_dist,
 #	## !! throws an error due to invalid polygons.. also takes a long time
 #pa_diss <- st_union(pa_proj)
 #rm(pa_proj)
-#	# ? write file to use so don't have to merge next time ? (didn't try this yet)
-#st_write(pa_diss, file.path(main_dir,"inputs","gis_data",
-#	"WDPA_Oct2021_Public_shp-polygons-dissolved",
-#	"WDPA_Oct2021_Public_shp-polygons-dissolved.shp"))
+
+
+	### for gap analysis of nine genera dataset
+	#main_dir <- "/Volumes/GoogleDrive-103729429307302508433/Shared drives/IMLS MFA/occurrence_points"
 
 # read in shapefile of global ecoregions
 ecoregions <- readOGR(file.path(main_dir,"inputs","gis_data",
@@ -295,6 +372,11 @@ target_countries <- world_countries[world_countries@data$ISO %in% target_iso,]
 target_countries.wgs <- spTransform(target_countries,wgs.proj)
 boundary.wgs <- aggregate(target_countries.wgs,dissolve = TRUE)
 
+	### for gap analysis of nine genera dataset
+	#main_dir <- "/Volumes/GoogleDrive-103729429307302508433/Shared drives/Global Tree Conservation Program/Gap Analyses/Conservation Gap Analysis of Priority Genera/occurrence_points"
+	### for gap analysis of US oaks 2020
+	#main_dir <- "/Volumes/GoogleDrive-103729429307302508433/My Drive/ArcGIS Map Layers Quercus_2020"
+
 ################################################################################
 ## Calculate geographic and ecological coverage of ex situ collections
 ################################################################################
@@ -304,11 +386,11 @@ boundary.wgs <- aggregate(target_countries.wgs,dissolve = TRUE)
 # we add each target species as we go along
 summary_tbl <- data.frame(
 	species = "start",
-	geo_10 = "start", geo_50 = "start",	geo_100 = "start", geo_500 = "start",
-	eco_10 = "start", eco_50 = "start", eco_100 = "start",
-	eco_usl4_10 = "start", eco_usl4_50 = "start", eco_usl4_100 = "start",
+	geo_sm = "start", geo_md = "start",	geo_lg = "start", geo_vlg = "start",
+	eco_sm = "start", eco_md = "start", eco_lg = "start",
+	eco_usl4_sm = "start", eco_usl4_md = "start", eco_usl4_lg = "start",
 	EOO = "start",
-	dist_filter = "start"#,
+	dist_filter = "start",
 	#pa_coverage = "start",
 	stringsAsFactors=F)
 
@@ -316,8 +398,11 @@ summary_tbl <- data.frame(
 
 for(sp in 1:length(target_sp)){
 
+## can test with one species first
+#sp <- 6
+
 	# print progress
-  cat("\tStarting ", target_sp[sp])
+  cat("\tStarting ", target_sp[sp], "\n")
 
 	### READ IN AND PREP POINT DATA
 
@@ -329,11 +414,16 @@ for(sp in 1:length(target_sp)){
 	## filter as desired
 	 insitu <- insitu_raw %>%
 	   filter(database == "Ex_situ" |
-	     (.cen & .inst & .con & .outl & #.urb & .yr1950 & .yr1980 & .yrna &
+	     (.cen & .inst & .con & .outl &
+					### for gap analysis of nine genera dataset
+				  #.bonapnative & .yr1950 & .yrna &
+			 #.urb & .yr1950 & .yr1980 & .yrna &
 	     #(.gtsnative | is.na(.gtsnative)) &
 	     #(.rlnative  | is.na(.rlnative)) &
 	     #(.rlintroduced | is.na(.rlintroduced)) &
 	     basisOfRecord != "FOSSIL_SPECIMEN" & basisOfRecord != "LIVING_SPECIMEN" &
+					### for gap analysis of nine genera dataset
+					#basisOfRecord != "H?" &
 	     establishmentMeans != "INTRODUCED" & establishmentMeans != "MANAGED" &
 	     establishmentMeans != "INVASIVE"))
 	  if(!is.na(spp.rl.dist$rl_native_dist)){
@@ -367,6 +457,8 @@ for(sp in 1:length(target_sp)){
 		remove <- unlist(strsplit(manual.edit$remove,"; "))
 		insitu <- insitu %>% filter(!(UID %in% remove))
 	}; nrow(insitu)
+			### for gap analysis of nine genera dataset; select US points only
+			#insitu <- clip.by.boundary(insitu,wgs.proj,boundary.wgs)
 		# add back
 	if(!is.na(manual.edit$keep)){
 		keep <- unlist(strsplit(manual.edit$keep,"; "))
@@ -374,118 +466,146 @@ for(sp in 1:length(target_sp)){
 		insitu <- suppressMessages(full_join(insitu,add))
 	}; nrow(insitu)
 
+		### for gap analysis of US oaks 2020
+		#exsitu_raw <- read.csv(file.path(main_dir,target_sp[sp],
+		#	paste0(target_sp[sp],"_exsitu.csv")), na.strings=c("","NA"), stringsAsFactors = F)
+		#	nrow(exsitu_raw)
+		#exsitu <- exsitu_raw %>%
+		#	filter(!is.na(latitude) & !is.na(longitude)) %>%
+		#	rename(decimalLatitude = latitude,
+		#			 	 decimalLongitude = longitude)
+		#	nrow(exsitu)
+		#insitu_raw <- read.csv(file.path(main_dir,target_sp[sp],
+		#	paste0(target_sp[sp],"_insitu.csv")), na.strings=c("","NA"), stringsAsFactors = F)
+		#	nrow(insitu_raw)
+		#insitu <- insitu_raw %>%
+		#	filter(!is.na(latitude) & !is.na(longitude)) %>%
+		#	rename(decimalLatitude = latitude,
+		#			 	 decimalLongitude = longitude)
+		#insitu <- full_join(insitu,exsitu)
+		#nrow(insitu)
+
 	### CALCULATE EOO (convex hull)
 
-	# uses package GeoRange to calculate area of convex hull in km2
+		# uses package GeoRange to calculate area of convex hull in km2
 	hull_area <- CHullAreaEarth(insitu$decimalLongitude,insitu$decimalLatitude)
 	hull_area <- round(hull_area,0)
 	print(paste("EOO:",hull_area,"km²"))
 
 	### CALCULATE PROTECTED AREA COVERAGE
 
-	## I think it will be something close to this, but haven't gotten the 
-	##		PA layer working yet
-	#	# create 10km buffers around in situ points
+		# create 10km buffers around in situ points
 	#buff_10_insitu <- create.buffers(insitu,10000,wgs.proj,wgs.proj)
-	#	# make sure buffer layer is in same projection as PA layer
+		# make sure buffer layer is in same projection as PA layer
 	#buff_10_insitu_sf <- st_transform(st_as_sf(buff_10_insitu),crs = 4326)
-	#	# intersect the buffer and PA layers to get overlap
-	#buff_pa_inter <- st_intersection(buff_10_insitu_sf, pa_proj)
+	#buff_10_insitu_sf
+		# intersect the buffer and PA layers to get overlap
+	#buff_pa_inter <- st_intersection(buff_10_insitu_sf, pa0_terr_usa_union)
 	#	# compare the buffer area to the buff_pa_inter area to get % coverage
 	#.....
 
 	## create df with just ex situ points
 	exsitu <- insitu %>% filter(database == "Ex_situ")
+	# get number of individuals ex situ with lat-long data
+	print(paste("Number of ex situ individuals:",sum(as.numeric(exsitu$establishmentMeans))))
 
 	### TURN THIS ON TO CALCULATE FOR MORTON ACCESSIONS ONLY
 	#exsitu <- exsitu %>% filter(datasetName == "MortonArb")
 
 		# check there are ex situ points, if not skip to end (can't do calculations)
-	if(nrow(exsitu) == 0){
-	  # add text results to summary table
-		summary_add <- data.frame(
-			species = gsub("_"," ",target_sp[sp]),
-			geo_10 = NA, geo_50 = NA,	geo_100 = NA, geo_500 = NA,
-			eco_10 = NA, eco_50 = NA, eco_100 = NA,
-			eco_usl4_10 = NA, eco_usl4_50 = NA, eco_usl4_100 = NA,
-			EOO = hull_area, dist_filter = dist_filter_val,
-			stringsAsFactors=F)
-		print("No ex situ points; skipping buffer calculations")
-	} else {
-
-		### CALCULATE EX SITU COVERAGE
-
-			## Geographic coverage
-
-		# calculate area based on 100 kilometer buffers
-		geo_coverage_500 <- compare.buff.area(insitu,exsitu,500000,wgs.proj,aea.proj)
-		# calculate area based on 100 kilometer buffers
-		geo_coverage_100 <- compare.buff.area(insitu,exsitu,100000,wgs.proj,aea.proj)
-		# calculate area based on 50 kilometer buffers
-		geo_coverage_50 <- compare.buff.area(insitu,exsitu,50000,wgs.proj,aea.proj)
-		# calculate area based on 10 kilometer buffers
-		geo_coverage_10 <- compare.buff.area(insitu,exsitu,10000,wgs.proj,aea.proj)
-
-			## Ecological coverage
-
-		## Global ecoregions
-		# count ecoregions under 100 km buffers
-		eco_coverage_100 <- compare.eco.count(insitu,exsitu,100000,wgs.proj,aea.proj,ecoregions)
-		# count ecoregions under 50 km buffers
-		eco_coverage_50 <- compare.eco.count(insitu,exsitu,50000,wgs.proj,aea.proj,ecoregions)
-		# count ecoregions under 10 km buffers
-		eco_coverage_10 <- compare.eco.count(insitu,exsitu,10000,wgs.proj,aea.proj,ecoregions)
-
-		## U.S. Level 4 (most specific) ecoregions
-		# get just points that are in the U.S.
-		us_insitu <- clip.by.boundary(insitu,wgs.proj,boundary.wgs)
-		us_exsitu <- clip.by.boundary(exsitu,wgs.proj,boundary.wgs)
-		# if there are in situ and ex situ points in the U.S., then calculate coverage
-		if(nrow(us_exsitu) > 0 & nrow(us_insitu) > 0){
-			# count ecoregions under 100 km buffers
-			ecol4_coverage_100 <- compare.ecol4.count(us_insitu,us_exsitu,100000,wgs.proj,aea.proj,ecol4)
-			# count ecoregions under 50 km buffers
-			ecol4_coverage_50 <- compare.ecol4.count(us_insitu,us_exsitu,50000,wgs.proj,aea.proj,ecol4)
-			# count ecoregions under 10 km buffers
-			ecol4_coverage_10 <- compare.ecol4.count(us_insitu,us_exsitu,10000,wgs.proj,aea.proj,ecol4)
-		# if there's distribution in the U.S. but no ex situ points, assign 0%
-		} else if(nrow(us_exsitu) == 0 & nrow(us_insitu) > 0){
-			ecol4_coverage_100 <- "0%"
-			ecol4_coverage_50 <- "0%"
-			ecol4_coverage_10 <- "0%"
-		# if not in U.S. then NA
-		} else {
-			ecol4_coverage_100 <- NA
-			ecol4_coverage_50 <- NA
-			ecol4_coverage_10 <- NA
-		}
-
-		### SUMMARY TABLE
-
-	  ## Add text results to summary table
-	  summary_add <- data.frame(
-			species = gsub("_"," ",target_sp[sp]),
-			geo_10 = geo_coverage_10,
-			geo_50 = geo_coverage_50,
-			geo_100 = geo_coverage_100,
-			geo_500 = geo_coverage_500,
-			eco_10 = eco_coverage_10,
-			eco_50 = eco_coverage_50,
-			eco_100 = eco_coverage_100,
-			eco_usl4_10 = ecol4_coverage_10,
-			eco_usl4_50 = ecol4_coverage_50,
-			eco_usl4_100 = ecol4_coverage_100,
-			EOO = hull_area,
-			dist_filter = dist_filter_val,
-			stringsAsFactors=F)
-	}
-	summary_tbl[sp,] <- summary_add
+#	if(nrow(exsitu) == 0){
+#	  # add text results to summary table
+#		summary_add <- data.frame(
+#			species = gsub("_"," ",target_sp[sp]),
+#			geo_sm = NA, geo_md = NA,	geo_lg = NA, geo_vlg = NA,
+#			eco_sm = NA, eco_md = NA, eco_lg = NA,
+#			eco_usl4_sm = NA, eco_usl4_md = NA, eco_usl4_lg = NA,
+#			EOO = hull_area,
+#				### turn the next row off for gap analysis of US oaks 2020
+#			#dist_filter = dist_filter_val,
+#			stringsAsFactors=F)
+#		print("No ex situ points; skipping buffer calculations")
+#	} else {
+#
+#		### CALCULATE EX SITU COVERAGE
+#
+#			## Geographic coverage
+#
+#		# calculate area based on largest buffers
+#		geo_coverage_vlg <- compare.buff.area(insitu,exsitu,largest_buff,wgs.proj,aea.proj)
+#		# calculate area based on large buffers
+#		geo_coverage_lg <- compare.buff.area(insitu,exsitu,large_buff,wgs.proj,aea.proj)
+#		# calculate area based on medium buffers
+#		geo_coverage_md <- compare.buff.area(insitu,exsitu,med_buff,wgs.proj,aea.proj)
+#		# calculate area based on small buffers
+#		geo_coverage_sm <- compare.buff.area(insitu,exsitu,small_buff,wgs.proj,aea.proj)
+#
+#			## Ecological coverage
+#
+#		## Global ecoregions
+#		# count ecoregions under large buffers
+#		eco_coverage_lg <- compare.eco.count(insitu,exsitu,large_buff,wgs.proj,aea.proj,ecoregions)
+#		# count ecoregions under medium buffers
+#		eco_coverage_md <- compare.eco.count(insitu,exsitu,med_buff,wgs.proj,aea.proj,ecoregions)
+#		# count ecoregions under small buffers
+#		eco_coverage_sm <- compare.eco.count(insitu,exsitu,small_buff,wgs.proj,aea.proj,ecoregions)
+#
+#		## U.S. Level 4 (most specific) ecoregions
+#		# get just points that are in the U.S.
+#		us_insitu <- clip.by.boundary(insitu,wgs.proj,boundary.wgs)
+#		us_exsitu <- clip.by.boundary(exsitu,wgs.proj,boundary.wgs)
+#		# if there are in situ and ex situ points in the U.S., then calculate coverage
+#		if(nrow(us_exsitu) > 0 & nrow(us_insitu) > 0){
+#			# count ecoregions under large buffers
+#			ecol4_coverage_lg <- compare.ecol4.count(us_insitu,us_exsitu,large_buff,wgs.proj,aea.proj,ecol4)
+#			# count ecoregions under medium buffers
+#			ecol4_coverage_md <- compare.ecol4.count(us_insitu,us_exsitu,med_buff,wgs.proj,aea.proj,ecol4)
+#			# count ecoregions under small buffers
+#			ecol4_coverage_sm <- compare.ecol4.count(us_insitu,us_exsitu,small_buff,wgs.proj,aea.proj,ecol4)
+#		# if there's distribution in the U.S. but no ex situ points, assign 0%
+#		} else if(nrow(us_exsitu) == 0 & nrow(us_insitu) > 0){
+#			ecol4_coverage_lg <- "0%"
+#			ecol4_coverage_md <- "0%"
+#			ecol4_coverage_sm <- "0%"
+#		# if not in U.S. then NA
+#		} else {
+#			ecol4_coverage_lg <- NA
+#			ecol4_coverage_md <- NA
+#			ecol4_coverage_sm <- NA
+#		}
+#
+#		### SUMMARY TABLE
+#
+#	  ## Add text results to summary table
+#	  summary_add <- data.frame(
+#			species = gsub("_"," ",target_sp[sp]),
+#			geo_sm = geo_coverage_sm,
+#			geo_md = geo_coverage_md,
+#			geo_lg = geo_coverage_lg,
+#			geo_vlg = geo_coverage_vlg,
+#			eco_sm = eco_coverage_sm,
+#			eco_md = eco_coverage_md,
+#			eco_lg = eco_coverage_lg,
+#			eco_usl4_sm = ecol4_coverage_sm,
+#			eco_usl4_md = ecol4_coverage_md,
+#			eco_usl4_lg = ecol4_coverage_lg,
+#			EOO = hull_area,
+#				### turn the next row off for gap analysis of US oaks 2020
+#			#dist_filter = dist_filter_val,
+#			stringsAsFactors=F)
+#	}
+#	summary_tbl[sp,] <- summary_add
 }
 
 ## write summary table
 summary_tbl
 write.csv(summary_tbl, file.path(main_dir,"outputs","exsitu_coverage",
-	"ExSituCoverage_BufferTable_MortonOnly_6_30_21.csv"), row.names = F)
+	"ExSituCoverage_BufferTable_1_28_22.csv"), row.names = F)
+
+	### for gap analysis of US oaks 2020
+#write.csv(summary_tbl, file.path(main_dir,
+#	"Oaks2020_BufferTable.csv"), row.names = F)
+
 
 ################################################################################
 # Map
@@ -506,7 +626,7 @@ ecol4_wgs <- spTransform(ecol4,wgs.proj)
 
 ## CHOOSE TARGET SPECIES TO MAP
 target_sp # view target species
-sp <- 6 # select one to work with
+sp <- 4 # select one to work with
 cat("\tMapping ", target_sp[sp])
 
 ## the next section is simply copied from above; the flow could eventually be
@@ -523,11 +643,16 @@ cat("\tMapping ", target_sp[sp])
 	## filter as desired
 	 insitu <- insitu_raw %>%
 	   filter(database == "Ex_situ" |
-	     (.cen & .inst & .con & .outl & #.urb & .yr1950 & .yr1980 & .yrna &
+	     (.cen & .inst & .con & .outl &
+					### for gap analysis of nine genera dataset
+				  #.bonapnative & .yr1950 & .yrna &
+			 #.urb & .yr1950 & .yr1980 & .yrna &
 	     #(.gtsnative | is.na(.gtsnative)) &
 	     #(.rlnative  | is.na(.rlnative)) &
 	     #(.rlintroduced | is.na(.rlintroduced)) &
 	     basisOfRecord != "FOSSIL_SPECIMEN" & basisOfRecord != "LIVING_SPECIMEN" &
+					### for gap analysis of nine genera dataset
+					#basisOfRecord != "H?" &
 	     establishmentMeans != "INTRODUCED" & establishmentMeans != "MANAGED" &
 	     establishmentMeans != "INVASIVE"))
 	  if(!is.na(spp.rl.dist$rl_native_dist)){
@@ -560,6 +685,8 @@ cat("\tMapping ", target_sp[sp])
 		remove <- unlist(strsplit(manual.edit$remove,"; "))
 		insitu <- insitu %>% filter(!(UID %in% remove))
 	}; nrow(insitu)
+			### for gap analysis of nine genera dataset; select US points only
+			#insitu <- clip.by.boundary(insitu,wgs.proj,boundary.wgs)
 		# add back
 	if(!is.na(manual.edit$keep)){
 		keep <- unlist(strsplit(manual.edit$keep,"; "))
@@ -598,7 +725,6 @@ coverage_map <- leaflet() %>%
 		fillOpacity = 0, color = "#969696", weight = 1.5, opacity = 1) %>%
 	## in situ buffers
 	addPolygons(data = create.buffers(insitu,50000,wgs.proj,wgs.proj),
-		smoothFactor = 0.5,	weight = 2.5, color = "#1c1c1b", fillOpacity = 0.2) %>%
 	## ex situ buffers
 	addPolygons(data = create.buffers(exsitu,50000,wgs.proj,wgs.proj),
 		smoothFactor = 0.5,	weight = 1, opacity = 1, color = "#b0f6f7",
@@ -606,12 +732,12 @@ coverage_map <- leaflet() %>%
 	## in situ points
 	addCircleMarkers(data = insitu,
 		lng = ~decimalLongitude, lat = ~decimalLatitude,
-		popup = ~paste("Source(s):", all_source_databases),
+		#popup = ~paste("Source(s):", all_source_databases, UID),
 		radius = 4, fillOpacity = 1, stroke = F, color = "#1c1c1b") %>%
 	## ex situ points
 	addCircleMarkers(data = exsitu,
 		lng = ~decimalLongitude, lat = ~decimalLatitude,
-		popup = ~paste("Garden:", datasetName),
+		#popup = ~paste("Garden:", datasetName, UID),
 		radius = 4, fillOpacity = 1, stroke = F, color = "#b0f6f7") %>%
 			# could add another layer that highlights just the Morton points or
 			#		could use a color palette based on the "database" column :)
