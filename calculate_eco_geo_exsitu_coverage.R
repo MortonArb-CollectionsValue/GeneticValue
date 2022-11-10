@@ -1,6 +1,6 @@
 ################################################################################
 
-## 5-0_calculate_exsitu_coverage.R
+## 5-0_calculate_eco_geo_exsitu_coverage.R
 ### Author: Emily Beckman ### Date: 05/11/2021
 
 ### DESCRIPTION:
